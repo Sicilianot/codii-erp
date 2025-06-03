@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de CAPA{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <h1 class="h3 mb-2 text-gray-800">CAPA #{{ capa.id }}</h1> {# O número si se genera #}
+    <p class="mb-4">Detalles de la Acción Correctiva/Preventiva (CAPA).</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Información General</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>ID:</strong> {{ capa.id }}</p>
+                    <p><strong>Tipo:</strong> {{ capa.capa_type | title }}</p>
+                    <p><strong>Estado:</strong> {{ capa.status | title }}</p>
+                    <p><strong>Asignado A:</strong> {{ capa.assigned_to.username if capa.assigned_to else 'N/A' }}</p>
+                    <p><strong>Fecha Límite:</strong> {{ capa.due_date.strftime('%Y-%m-%d %H:%M') if capa.due_date else 'N/A' }}</p>
+                     <p><strong>Fuente:</strong> {{ capa.source_type | title if capa.source_type else 'N/A' }} (ID: {{ capa.source_id or 'N/A' }}) {# TODO: Mostrar enlace a la fuente #}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Fecha de Implementación:</strong> {{ capa.completion_date.strftime('%Y-%m-%d %H:%M') if capa.completion_date else 'N/A' }}</p>
+                    <p><strong>Verificado Por:</strong> {{ capa.verified_by.username if capa.verified_by else 'N/A' }}</p>
+                    <p><strong>Fecha de Verificación:</strong> {{ capa.verification_date.strftime('%Y-%m-%d %H:%M') if capa.verification_date else 'N/A' }}</p>
+                     <p><strong>Efectividad:</strong> {{ capa.effectiveness_status | title if capa.effectiveness_status else 'N/A' }}</p>
+                     <p><strong>Creado por:</strong> {{ capa.creator.username if capa.creator else 'N/A' }}</p>
+                    <p><strong>Fecha de Creación:</strong> {{ capa.created_at.strftime('%Y-%m-%d %H:%M') if capa.created_at else 'N/A' }}</p>
+                </div>
+            </div>
+            <p><strong>Descripción del Problema/Hallazgo:</strong> {{ capa.description }}</p>
+            <p><strong>Causa Raíz:</strong> {{ capa.root_cause or 'N/A' }}</p>
+            <p><strong>Acción Propuesta:</strong> {{ capa.proposed_action or 'N/A' }}</p>
+            <p><strong>Acción Implementada:</strong> {{ capa.implemented_action or 'N/A' }}</p>
+             <p><strong>Método de Verificación:</strong> {{ capa.verification_method or 'N/A' }}</p>
+            <p><strong>Notas Adicionales:</strong> {{ capa.notes or 'N/A' }}</p>
+
+            <a href="{{ url_for('qm.edit_capa', id=capa.id) }}" class="btn btn-warning btn-sm mt-3">Editar CAPA</a>
+             <button type="button" class="btn btn-danger btn-sm mt-3" data-toggle="modal" data-target="#deleteCAPAModal{{ capa.id }}">
+                Eliminar CAPA
+            </button>
+             <!-- Delete CAPA Modal -->
+            <div class="modal fade" id="deleteCAPAModal{{ capa.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteCAPAModalLabel{{ capa.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="deleteCAPAModalLabel{{ capa.id }}">Confirmar Eliminación</h5>
+                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">¿Estás seguro de que deseas eliminar la CAPA ID <strong>{{ capa.id }}</strong>? Esta acción no se puede deshacer.</div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            <form action="{{ url_for('qm.delete_capa', id=capa.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% endblock %} 

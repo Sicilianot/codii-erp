@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Órdenes de Compra{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Lista de Órdenes de Compra</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            {# TODO: Enlazar al formulario para añadir nueva orden de compra #}
+            <a href="{{ url_for('mm.create_purchase_order') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Crear Orden de Compra
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">Órdenes de Compra Registradas</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Número OC</th>
+                                    <th>Proveedor</th>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th>Monto Total</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if purchase_orders %}
+                                    {% for order in purchase_orders %}
+                                    <tr>
+                                        <td>{{ order.order_number }}</td>
+                                        <td>{{ order.supplier.name if order.supplier else "N/A" }}</td>
+                                        <td>{{ order.order_date.strftime('%d/%m/%Y') if order.order_date else "N/A" }}</td>
+                                         <td>
+                                            {% if order.status == 'pending' %}
+                                            <span class="badge bg-warning">Pendiente</span>
+                                            {% elif order.status == 'approved' %}
+                                            <span class="badge bg-success">Aprobada</span>
+                                            {% elif order.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rechazada</span>
+                                             {% elif order.status == 'cancelled' %}
+                                            <span class="badge bg-secondary">Cancelada</span>
+                                            {% else %}
+                                            <span class="badge bg-info">Completada</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ "{:,.2f}".format(order.total_amount) if order.total_amount is not none else "0.00" }}</td>
+                                        <td>
+                                            <div class="btn-group">
+                                                {# TODO: Enlazar a la página de detalle de la orden de compra #}
+                                                <a href="{{ url_for('mm.view_purchase_order', id=order.id) }}" class="btn btn-sm btn-info" title="Ver Detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                 {# TODO: Enlazar a la página de edición de la orden de compra (si el estado lo permite) #}
+                                                 {% if order.status == 'pending' %}
+                                                 <a href="{{ url_for('mm.edit_purchase_order', id=order.id) }}" class="btn btn-sm btn-primary" title="Editar Orden">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                 {# TODO: Añadir formulario para cancelar orden de compra (si el estado lo permite) #}
+                                                <form action="{{ url_for('mm.cancel_purchase_order', id=order.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de cancelar esta orden de compra?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Cancelar Orden">
+                                                        <i class="fas fa-times-circle"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No hay órdenes de compra registradas.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

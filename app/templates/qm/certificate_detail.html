@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-2xl font-semibold mb-6">Detalle de Certificado: {{ certificate.certificate_number }}</h1>
+
+    {# Información general del certificado #}
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Información del Certificado</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <p class="text-gray-600">Número de Certificado:</p>
+                <p class="font-medium">{{ certificate.certificate_number }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Tipo de Certificado:</p>
+                <p class="font-medium">{{ certificate.certificate_type }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Referencia:</p>
+                <p class="font-medium">
+                    {% if certificate.reference_type %}
+                        {{ certificate.reference_type }}: {{ certificate.reference_id }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </p>
+            </div>
+             <div>
+                <p class="text-gray-600">Fecha de Emisión:</p>
+                <p class="font-medium">{{ certificate.issue_date.strftime('%Y-%m-%d') if certificate.issue_date else 'N/A' }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Fecha de Vencimiento:</p>
+                <p class="font-medium">{{ certificate.expiry_date.strftime('%Y-%m-%d') if certificate.expiry_date else 'N/A' }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Emitido Por:</p>
+                <p class="font-medium">{{ certificate.issued_by }}</p>
+            </div>
+            {# TODO: Mostrar Estado si se añade al modelo #}
+             <div class="md:col-span-2">
+                <p class="text-gray-600">Notas:</p>
+                <p class="font-medium">{{ certificate.notes or 'Sin notas' }}</p>
+            </div>
+             <div class="md:col-span-2">
+                <p class="text-gray-600">Archivo Asociado:</p>
+                <p class="font-medium">
+                    {% if certificate.file_path %}
+                         <a href="{{ url_for('qm.download_certificate', id=certificate.id) }}" class="text-purple-600 hover:underline">Descargar Archivo</a>
+                    {% else %}
+                        No hay archivo asociado.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+         {# Acciones principales del certificado #}
+        <div class="mt-6 flex space-x-4">
+             <a href="{{ url_for('qm.edit_certificate', id=certificate.id) }}" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Editar Certificado</a>
+
+             {# Botón para Eliminar (usar formulario POST) #}
+             <form action="{{ url_for('qm.delete_certificate', id=certificate.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este certificado? Esta acción no se puede deshacer y eliminará el archivo asociado.');">
+                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Eliminar Certificado</button>
+            </form>
+        </div>
+    </div>
+
+    {# Botón para volver #}
+     <div class="mt-6">
+        <a href="{{ url_for('qm.list_certificates') }}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Volver a la Lista de Certificados</a>
+     </div>
+
+</div>
+{% endblock %} 

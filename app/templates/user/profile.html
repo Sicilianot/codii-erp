@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil de Usuario - ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Información del Perfil -->
+        <div class="col-xl-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <img src="{{ user.avatar_url or url_for('static', filename='img/default-avatar.png') }}" 
+                             alt="Avatar" 
+                             class="rounded-circle img-thumbnail"
+                             style="width: 150px; height: 150px; object-fit: cover;">
+                    </div>
+                    <h4 class="card-title">{{ user.full_name }}</h4>
+                    <p class="text-muted">{{ user.role.name }}</p>
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                            <i class="fas fa-edit me-2"></i>
+                            Editar Perfil
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                            <i class="fas fa-key me-2"></i>
+                            Cambiar Contraseña
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información de Contacto -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Información de Contacto</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-3">
+                            <i class="fas fa-envelope me-2 text-primary"></i>
+                            {{ user.email }}
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-phone me-2 text-primary"></i>
+                            {{ user.phone or 'No especificado' }}
+                        </li>
+                        <li>
+                            <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                            {{ user.address or 'No especificada' }}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actividad Reciente -->
+        <div class="col-xl-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Actividad Reciente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for activity in recent_activities %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">{{ activity.title }}</h6>
+                                <p class="mb-1">{{ activity.description }}</p>
+                                <small class="text-muted">{{ activity.timestamp|format_datetime }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Perfil -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Perfil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('user.update_profile') }}" enctype="multipart/form-data" class="needs-validation" novalidate>
+                {{ profile_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">Nombre</label>
+                        {{ profile_form.first_name(class="form-control") }}
+                        {% if profile_form.first_name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in profile_form.first_name.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Apellido</label>
+                        {{ profile_form.last_name(class="form-control") }}
+                        {% if profile_form.last_name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in profile_form.last_name.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Teléfono</label>
+                        {{ profile_form.phone(class="form-control") }}
+                        {% if profile_form.phone.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in profile_form.phone.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Dirección</label>
+                        {{ profile_form.address(class="form-control") }}
+                        {% if profile_form.address.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in profile_form.address.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="avatar" class="form-label">Foto de Perfil</label>
+                        {{ profile_form.avatar(class="form-control") }}
+                        {% if profile_form.avatar.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in profile_form.avatar.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cambiar Contraseña -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cambiar Contraseña</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('user.change_password') }}" class="needs-validation" novalidate>
+                {{ password_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Contraseña Actual</label>
+                        <div class="input-group">
+                            {{ password_form.current_password(class="form-control") }}
+                            <button class="btn btn-outline-secondary" type="button" id="toggleCurrentPassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        {% if password_form.current_password.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in password_form.current_password.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">Nueva Contraseña</label>
+                        <div class="input-group">
+                            {{ password_form.new_password(class="form-control") }}
+                            <button class="btn btn-outline-secondary" type="button" id="toggleNewPassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        {% if password_form.new_password.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in password_form.new_password.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Confirmar Nueva Contraseña</label>
+                        <div class="input-group">
+                            {{ password_form.confirm_password(class="form-control") }}
+                            <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        {% if password_form.confirm_password.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in password_form.confirm_password.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle password visibility
+    const togglePassword = (buttonId, inputId) => {
+        const button = document.querySelector(buttonId);
+        const input = document.querySelector(inputId);
+        
+        button.addEventListener('click', function() {
+            const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+            input.setAttribute('type', type);
+            this.querySelector('i').classList.toggle('fa-eye');
+            this.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    };
+
+    togglePassword('#toggleCurrentPassword', '#current_password');
+    togglePassword('#toggleNewPassword', '#new_password');
+    togglePassword('#toggleConfirmPassword', '#confirm_password');
+
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Materiales - ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Gestión de Materiales</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createMaterialModal">
+            <i class="fas fa-plus me-2"></i>
+            Nuevo Material
+        </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('mm.materials') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Buscar</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.args.get('search', '') }}" 
+                           placeholder="Código, nombre...">
+                </div>
+                <div class="col-md-3">
+                    <label for="category" class="form-label">Categoría</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">Todas</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if request.args.get('category')|int == category.id %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Estado</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Todos</option>
+                        <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>
+                            Activo
+                        </option>
+                        <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>
+                            Inactivo
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-2"></i>
+                        Filtrar
+                    </button>
+                    <a href="{{ url_for('mm.materials') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>
+                        Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de Materiales -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Categoría</th>
+                            <th>Stock Actual</th>
+                            <th>Stock Mínimo</th>
+                            <th>Unidad</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for material in materials %}
+                        <tr>
+                            <td>{{ material.code }}</td>
+                            <td>{{ material.name }}</td>
+                            <td>{{ material.category.name }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'danger' if material.current_stock <= material.min_stock else 'success' }}">
+                                    {{ material.current_stock }}
+                                </span>
+                            </td>
+                            <td>{{ material.min_stock }}</td>
+                            <td>{{ material.unit }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if material.is_active else 'danger' }}">
+                                    {{ 'Activo' if material.is_active else 'Inactivo' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editMaterialModal{{ material.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#viewMaterialModal{{ material.id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteMaterialModal{{ material.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if pagination %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% for page in pagination.iter_pages() %}
+                        {% if page %}
+                            <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('mm.materials', page=page, **request.args) }}">
+                                    {{ page }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Material -->
+<div class="modal fade" id="createMaterialModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.create_material') }}" class="needs-validation" novalidate>
+                {{ create_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="code" class="form-label">Código</label>
+                            {{ create_form.code(class="form-control") }}
+                            {% if create_form.code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.code.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Nombre</label>
+                            {{ create_form.name(class="form-control") }}
+                            {% if create_form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label">Categoría</label>
+                            {{ create_form.category(class="form-select") }}
+                            {% if create_form.category.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.category.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="unit" class="form-label">Unidad de Medida</label>
+                            {{ create_form.unit(class="form-select") }}
+                            {% if create_form.unit.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.unit.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="current_stock" class="form-label">Stock Actual</label>
+                            {{ create_form.current_stock(class="form-control", type="number", step="0.01") }}
+                            {% if create_form.current_stock.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.current_stock.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="min_stock" class="form-label">Stock Mínimo</label>
+                            {{ create_form.min_stock(class="form-control", type="number", step="0.01") }}
+                            {% if create_form.min_stock.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.min_stock.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        {{ create_form.description(class="form-control", rows="3") }}
+                        {% if create_form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in create_form.description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="specifications" class="form-label">Especificaciones</label>
+                        {{ create_form.specifications(class="form-control", rows="3") }}
+                        {% if create_form.specifications.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in create_form.specifications.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Material</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modales Editar Material -->
+{% for material in materials %}
+<div class="modal fade" id="editMaterialModal{{ material.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.edit_material', id=material.id) }}" class="needs-validation" novalidate>
+                {{ edit_forms[material.id].hidden_tag() }}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="code" class="form-label">Código</label>
+                            {{ edit_forms[material.id].code(class="form-control") }}
+                            {% if edit_forms[material.id].code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[material.id].code.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Nombre</label>
+                            {{ edit_forms[material.id].name(class="form-control") }}
+                            {% if edit_forms[material.id].name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[material.id].name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label">Categoría</label>
+                            {{ edit_forms[material.id].category(class="form-select") }}
+                            {% if edit_forms[material.id].category.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[material.id].category.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="unit" class="form-label">Unidad de Medida</label>
+                            {{ edit_forms[material.id].unit(class="form-select") }}
+                            {% if edit_forms[material.id].unit.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[material.id].unit.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="current_stock" class="form-label">Stock Actual</label>
+                            {{ edit_forms[material.id].current_stock(class="form-control", type="number", step="0.01") }}
+                            {% if edit_forms[material.id].current_stock.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[material.id].current_stock.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="min_stock" class="form-label">Stock Mínimo</label>
+                            {{ edit_forms[material.id].min_stock(class="form-control", type="number", step="0.01") }}
+                            {% if edit_forms[material.id].min_stock.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[material.id].min_stock.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        {{ edit_forms[material.id].description(class="form-control", rows="3") }}
+                        {% if edit_forms[material.id].description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in edit_forms[material.id].description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="specifications" class="form-label">Especificaciones</label>
+                        {{ edit_forms[material.id].specifications(class="form-control", rows="3") }}
+                        {% if edit_forms[material.id].specifications.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in edit_forms[material.id].specifications.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            {{ edit_forms[material.id].is_active(class="form-check-input") }}
+                            <label class="form-check-label" for="is_active">
+                                Material Activo
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ver Material -->
+<div class="modal fade" id="viewMaterialModal{{ material.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles del Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Código</dt>
+                            <dd class="col-sm-8">{{ material.code }}</dd>
+
+                            <dt class="col-sm-4">Nombre</dt>
+                            <dd class="col-sm-8">{{ material.name }}</dd>
+
+                            <dt class="col-sm-4">Categoría</dt>
+                            <dd class="col-sm-8">{{ material.category.name }}</dd>
+
+                            <dt class="col-sm-4">Unidad</dt>
+                            <dd class="col-sm-8">{{ material.unit }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Stock Actual</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-{{ 'danger' if material.current_stock <= material.min_stock else 'success' }}">
+                                    {{ material.current_stock }}
+                                </span>
+                            </dd>
+
+                            <dt class="col-sm-4">Stock Mínimo</dt>
+                            <dd class="col-sm-8">{{ material.min_stock }}</dd>
+
+                            <dt class="col-sm-4">Estado</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-{{ 'success' if material.is_active else 'danger' }}">
+                                    {{ 'Activo' if material.is_active else 'Inactivo' }}
+                                </span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Descripción</h6>
+                        <p>{{ material.description or 'Sin descripción' }}</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Especificaciones</h6>
+                        <p>{{ material.specifications or 'Sin especificaciones' }}</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Historial de Movimientos</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Cantidad</th>
+                                        <th>Referencia</th>
+                                        <th>Usuario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for movement in material.movements %}
+                                    <tr>
+                                        <td>{{ movement.date|format_datetime }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if movement.type == 'in' else 'danger' }}">
+                                                {{ 'Entrada' if movement.type == 'in' else 'Salida' }}
+                                            </span>
+                                        </td>
+                                        <td>{{ movement.quantity }}</td>
+                                        <td>{{ movement.reference }}</td>
+                                        <td>{{ movement.user.full_name }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Eliminar Material -->
+<div class="modal fade" id="deleteMaterialModal{{ material.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar el material <strong>{{ material.name }}</strong>?</p>
+                {% if material.current_stock > 0 %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Este material tiene stock disponible. Deberá ajustar el inventario antes de eliminarlo.
+                </div>
+                {% endif %}
+                <p class="text-danger">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('mm.delete_material', id=material.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger" {% if material.current_stock > 0 %}disabled{% endif %}>
+                        Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+</script>
+{% endblock %} 

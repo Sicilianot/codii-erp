@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if form.id.data %}
+        Editar Material
+    {% else %}
+        Añadir Nuevo Material
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>
+                {% if form.id.data %}
+                    Editar Material
+                {% else %}
+                    Añadir Nuevo Material
+                {% endif %}
+            </h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="">
+                        {{ form.csrf_token }}
+
+                        {# Campo oculto para el ID en caso de edición #}
+                        {% if form.id %}{{ form.id() }}{% endif %}
+
+                        <div class="mb-3">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control", required=true) }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{% for error in form.name.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control", rows="3") }}
+                            {% if form.description.errors %}
+                                <div class="text-danger">{% for error in form.description.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.unit.label(class="form-label") }}
+                            {{ form.unit(class="form-control", required=true) }}
+                            {% if form.unit.errors %}
+                                <div class="text-danger">{% for error in form.unit.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.initial_stock.label(class="form-label") }}
+                            {{ form.initial_stock(class="form-control", type="number", min="0", step="any", required=true) }}
+                             {% if form.initial_stock.errors %}
+                                <div class="text-danger">{% for error in form.initial_stock.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                         {# Si es edición, mostrar stock actual, pero no permitir editarlo directamente aquí #}
+                         {% if form.id.data %}
+                         <div class="mb-3">
+                             <label class="form-label">Stock Actual</label>
+                              <input type="text" class="form-control-plaintext" value="{{ form.current_stock.data or 0 }}" readonly>
+                         </div>
+                         {% endif %}
+
+                        <button type="submit" class="btn btn-primary">
+                            {% if form.id.data %}
+                                Guardar Cambios
+                            {% else %}
+                                Crear Material
+                            {% endif %}
+                        </button>
+                         <a href="{{ url_for('mm.list_materials') }}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

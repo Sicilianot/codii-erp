@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de Certificados de Calidad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <h1 class="h3 mb-2 text-gray-800">Certificados de Calidad</h1>
+    <p class="mb-4">Listado de todos los certificados de calidad registrados en el sistema.</p>
+
+    <a href="{{ url_for('qm.add_certificate') }}" class="btn btn-primary btn-icon-split mb-3">
+        <span class="icon text-white-50">
+            <i class="fas fa-plus"></i>
+        </span>
+        <span class="text">Añadir Nuevo Certificado</span>
+    </a>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Listado</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Título</th>
+                            <th>Estándar/Especificación</th>
+                            <th>Fecha Emisión</th>
+                            <th>Fecha Expiración</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tfoot>
+                        <tr>
+                             <th>Número</th>
+                            <th>Título</th>
+                            <th>Estándar/Especificación</th>
+                            <th>Fecha Emisión</th>
+                            <th>Fecha Expiración</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </tfoot>
+                    <tbody>
+                        {% for certificate in certificates %}
+                        <tr>
+                            <td>{{ certificate.certificate_number }}</td>
+                            <td>{{ certificate.title }}</td>
+                            <td>{{ certificate.standard_specification or 'N/A' }}</td>
+                            <td>{{ certificate.issue_date.strftime('%Y-%m-%d') if certificate.issue_date else 'N/A' }}</td>
+                            <td>{{ certificate.expiry_date.strftime('%Y-%m-%d') if certificate.expiry_date else 'N/A' }}</td>
+                            <td>{{ certificate.status | title }}</td>
+                            <td>
+                                <a href="{{ url_for('qm.view_certificate', id=certificate.id) }}" class="btn btn-info btn-sm">Ver</a>
+                                <a href="{{ url_for('qm.edit_certificate', id=certificate.id) }}" class="btn btn-warning btn-sm">Editar</a>
+                                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteCertificateModal{{ certificate.id }}">
+                                    Eliminar
+                                </button>
+
+                                <!-- Delete Modal -->
+                                <div class="modal fade" id="deleteCertificateModal{{ certificate.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteCertificateModalLabel{{ certificate.id }}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteCertificateModalLabel{{ certificate.id }}">Confirmar Eliminación</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">¿Estás seguro de que deseas eliminar el certificado número <strong>{{ certificate.certificate_number }} - {{ certificate.title }}</strong>? Esta acción no se puede deshacer.</div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                <form action="{{ url_for('qm.delete_certificate', id=certificate.id) }}" method="POST" style="display: inline;">
+                                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Page level plugins -->
+<script src="{{ url_for('static', filename='vendor/datatables/jquery.dataTables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/datatables/dataTables.bootstrap4.min.js') }}"></script>
+
+<!-- Page level custom scripts -->
+<script src="{{ url_for('static', filename='js/demo/datatables-demo.js') }}"></script>
+{% endblock %} 

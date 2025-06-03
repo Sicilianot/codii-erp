@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Documentos de Calidad{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-2xl font-semibold mb-6">{{ title }}</h1>
+
+    <div class="flex justify-between items-center mb-4">
+        {# Formulario de búsqueda y filtro #}
+        <form method="get" action="{{ url_for('qm.list_documents') }}" class="flex items-center space-x-4">
+            <input type="text" name="search" placeholder="Buscar Documento..." value="{{ search or '' }}" class="border rounded px-2 py-1">
+            {# TODO: Añadir filtros para tipo y estado si es necesario en el frontend #}
+            <button type="submit" class="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600">Buscar</button>
+        </form>
+
+        {# Botón para crear nuevo documento #}
+        <a href="{{ url_for('qm.new_document') }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Nuevo Documento</a>
+    </div>
+
+    {# Tabla de documentos #}
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Código</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Título</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Versión</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha Emisión</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for document in documents.items %}
+                <tr>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                         <a href="{{ url_for('qm.document_detail', id=document.id) }}" class="text-blue-600 hover:underline">{{ document.document_code }}</a>
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        {{ document.title }}
+                    </td>
+                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        {{ document.version }}
+                    </td>
+                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        {{ document.document_type }}
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                         {{ document.issue_date.strftime('%Y-%m-%d') if document.issue_date else 'N/A' }}
+                    </td>
+                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        {{ document.status }}
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-right">
+                        <a href="{{ url_for('qm.document_detail', id=document.id) }}" class="text-blue-600 hover:underline mr-3">Ver</a>
+                         {% if document.status != 'obsolete' %}
+                            <a href="{{ url_for('qm.edit_document', id=document.id) }}" class="text-yellow-600 hover:underline mr-3">Editar</a>
+                             {# Botón para Marcar como Obsoleto (usar formulario POST) #}
+                            <form action="{{ url_for('qm.make_document_obsolete', id=document.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de marcar este documento como obsoleto?');">
+                                <button type="submit" class="text-orange-600 hover:underline mr-3">Obsoleto</button>
+                            </form>
+                        {% endif %}
+                         {# Botón para Descargar Archivo #}
+                        {% if document.file_path %}
+                            <a href="{{ url_for('qm.download_document', id=document.id) }}" class="text-purple-600 hover:underline mr-3">Descargar</a>
+                        {% endif %}
+                         {# Botón para Eliminar (usar formulario POST) #}
+                         <form action="{{ url_for('qm.delete_document', id=document.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este documento? Esta acción no se puede deshacer y eliminará el archivo asociado.');">
+                            <button type="submit" class="text-red-600 hover:underline">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
+                        No se encontraron documentos.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Paginación #}
+    <div class="px-5 py-5 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
+        <span class="text-xs xs:text-sm text-gray-900">
+            Mostrando {{ documents.page }} de {{ documents.pages }} páginas
+        </span>
+        <div class="inline-flex mt-2 xs:mt-0">
+            {% if documents.has_prev %}
+                <a href="{{ url_for('qm.list_documents', page=documents.prev_num, search=search, type=type, status=status) }}" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-l">Anterior</a>
+            {% else %}
+                 <span class="text-sm bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l opacity-50 cursor-not-allowed">Anterior</span>
+            {% endif %}
+            {% if documents.has_next %}
+                <a href="{{ url_for('qm.list_documents', page=documents.next_num, search=search, type=type, status=status) }}" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-r">Siguiente</a>
+            {% else %}
+                <span class="text-sm bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r opacity-50 cursor-not-allowed">Siguiente</span>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
+{% endblock %} 

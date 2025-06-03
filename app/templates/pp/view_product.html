@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}Detalles del Producto: {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2>Detalles del Producto: {{ product.name }} <small class="text-muted">({{ product.code }})</small></h2>
+            <div class="btn-group">
+                 <a href="{{ url_for('pp.edit_product', id=product.id) }}" class="btn btn-primary btn-sm" title="Editar Producto"><i class="fas fa-edit"></i> Editar Producto</a>
+                 {# TODO: Add button to add Production Order for this product #}
+                 {# TODO: Add button to manage BOM/Routing for this product (Already doing it below) #}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">Información General</div>
+                <div class="card-body">
+                    <p><strong>Código:</strong> {{ product.code }}</p>
+                    <p><strong>Nombre:</strong> {{ product.name }}</p>
+                    <p><strong>Tipo:</strong> {{ product.product_type }}</p>
+                    <p><strong>Tipo de Material Principal:</strong> {{ product.material_type }}</p>
+                    <p><strong>Unidad de Medida:</strong> {{ product.unit_of_measure }}</p>
+                    <p><strong>Precio Estándar:</strong> {{ "{:,.2f}".format(product.standard_price) if product.standard_price is not none else 'N/A' }}</p>
+                    <p><strong>Tiempo Estimado de Producción:</strong> {{ product.estimated_production_time if product.estimated_production_time is not none else 'N/A' }} horas</p>
+                    <p><strong>Peso:</strong> {{ product.weight if product.weight is not none else 'N/A' }} kg</p>
+                    <p><strong>Dimensiones:</strong> {{ product.dimensions if product.dimensions else 'N/A' }}</p>
+                    <p><strong>Activo:</strong> {% if product.is_active %}Sí{% else %}No{% endif %}</p>
+                    <p><strong>Creado el:</strong> {{ product.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    <p><strong>Actualizado el:</strong> {{ product.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    <p><strong>Descripción:</strong> {{ product.description if product.description else 'N/A' }}</p>
+                     {# TODO: Display technical_specs and welding_specs (JSON fields) #}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Lista de Materiales (BOM)</h5>
+                     {# Button to add Product Component #}
+                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addComponentModal"><i class="fas fa-plus"></i> Añadir Componente</button>
+                </div>
+                <div class="card-body">
+                    {% if product.components %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Cantidad</th>
+                                        <th>Unidad</th>
+                                        <th>Peso (kg)</th>
+                                        <th>Posición</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for component in product.components %}
+                                    <tr>
+                                        <td>{{ component.material.name if component.material else 'Material Eliminado' }}</td>
+                                        <td>{{ component.quantity }}</td>
+                                        <td>{{ component.unit_of_measure }}</td>
+                                        <td>{{ component.weight if component.weight is not none else 'N/A' }}</td>
+                                        <td>{{ component.position if component.position else 'N/A' }}</td>
+                                        <td>
+                                            <div class="btn-group">
+                                                {# Button/modal to edit component #}
+                                                <button type="button" class="btn btn-sm btn-primary edit-component-btn" data-bs-toggle="modal" data-bs-target="#editComponentModal{{ component.id }}" title="Editar Componente"><i class="fas fa-edit"></i></button>
+                                                 {# Form to delete component #}
+                                                <form action="{{ url_for('pp.delete_product_component', component_id=component.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este componente de la BOM?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Eliminar Componente"><i class="fas fa-trash"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>Este producto no tiene una Lista de Materiales definida.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                 <div class="card-header d-flex justify-content-between align-items-center">
+                     <h5 class="card-title mb-0">Hoja de Ruta (Routing)</h5>
+                     {# Button to add Product Process #}
+                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProcessModal"><i class="fas fa-plus"></i> Añadir Proceso</button>
+                 </div>
+                <div class="card-body">
+                    {% if product.processes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Secuencia</th>
+                                        <th>Tipo de Proceso</th>
+                                        <th>Est. Tiempo (horas)</th>
+                                         {# TODO: Add columns for required_skills, parameters, quality_checks #}
+                                        <th>Notas</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                     {% for process in product.processes | sort(attribute='sequence') %}
+                                     <tr>
+                                         <td>{{ process.sequence }}</td>
+                                         <td>{{ process.process_type }}</td>
+                                         <td>{{ process.estimated_time if process.estimated_time is not none else 'N/A' }}</td>
+                                          {# TODO: Display required_skills, parameters, quality_checks (JSON fields) #}
+                                         <td>{{ process.notes if process.notes else 'N/A' }}</td>
+                                          <td>
+                                             <div class="btn-group">
+                                                 {# Button/modal to edit process #}
+                                                 <button type="button" class="btn btn-sm btn-primary edit-process-btn" data-bs-toggle="modal" data-bs-target="#editProcessModal{{ process.id }}" title="Editar Proceso"><i class="fas fa-edit"></i></button>
+                                                  {# Form to delete process #}
+                                                 <form action="{{ url_for('pp.delete_product_process', process_id=process.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este proceso de la Hoja de Ruta?');">
+                                                     <button type="submit" class="btn btn-sm btn-danger" title="Eliminar Proceso"><i class="fas fa-trash"></i></button>
+                                                 </form>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                     {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>Este producto no tiene una Hoja de Ruta definida.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+     <div class="row">
+         <div class="col-12">
+              {# TODO: Add Production Orders section for this product #}
+         </div>
+     </div>
+
+     {# Modals for Product Components #}
+
+    <!-- Modal para Añadir Nuevo Componente -->
+    <div class="modal fade" id="addComponentModal" tabindex="-1" aria-labelledby="addComponentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addComponentModalLabel">Añadir Componente a BOM de {{ product.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                {# Action points to the add_product_component route for this product #}
+                <form action="{{ url_for('pp.add_product_component', product_id=product.id) }}" method="POST">
+                     <div class="modal-body">
+                         {# We will pass the add_component_form from the route #}
+                         {% set add_component_form = ProductComponentForm() %} {# Temporalmente, usar la instancia aquí. Ideally, pass from route #}
+                         {{ add_component_form.csrf_token }}
+                         <div class="mb-3">
+                             {{ add_component_form.material.label(class="form-label") }}
+                             {{ add_component_form.material(class="form-select", required=true) }}
+                             {% if add_component_form.material.errors %}
+                                 <div class="text-danger">{% for error in add_component_form.material.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                         <div class="mb-3">
+                             {{ add_component_form.quantity.label(class="form-label") }}
+                             {{ add_component_form.quantity(class="form-control", type="number", min="0.01", step="any", required=true) }}
+                              {% if add_component_form.quantity.errors %}
+                                 <div class="text-danger">{% for error in add_component_form.quantity.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                         <div class="mb-3">
+                            {{ add_component_form.unit_of_measure.label(class="form-label") }}
+                            {{ add_component_form.unit_of_measure(class="form-control") }}
+                            {% if add_component_form.unit_of_measure.errors %}
+                                 <div class="text-danger">{% for error in add_component_form.unit_of_measure.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_component_form.weight.label(class="form-label") }}
+                            {{ add_component_form.weight(class="form-control", type="number", min="0", step="any") }}
+                            {% if add_component_form.weight.errors %}
+                                 <div class="text-danger">{% for error in add_component_form.weight.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_component_form.position.label(class="form-label") }}
+                            {{ add_component_form.position(class="form-control") }}
+                            {% if add_component_form.position.errors %}
+                                 <div class="text-danger">{% for error in add_component_form.position.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                          <div class="mb-3">
+                             {{ add_component_form.notes.label(class="form-label") }}
+                             {{ add_component_form.notes(class="form-control", rows="3") }}
+                              {% if add_component_form.notes.errors %}
+                                 <div class="text-danger">{% for error in add_component_form.notes.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                     </div>
+                     <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Añadir Componente</button>
+                     </div>
+                 </form>
+            </div>
+        </div>
+    </div>
+
+    {# Modales para Editar Componente (uno por cada componente en el bucle) #}
+    {# These modals need forms passed from the route, similar to MM order items #}
+     {% for component in product.components %}
+    <!-- Modal para Editar Componente de la BOM -->
+    <div class="modal fade" id="editComponentModal{{ component.id }}" tabindex="-1" aria-labelledby="editComponentModalLabel{{ component.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editComponentModalLabel{{ component.id }}">Editar Componente de BOM de {{ product.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                {# Action points to the edit_product_component route #}
+                <form action="{{ url_for('pp.edit_product_component', component_id=component.id) }}" method="POST">
+                     <div class="modal-body">
+                         {# We need to pass an instance of ProductComponentForm for this specific component from the route #}
+                         {# TODO: Pass item_forms (list of ProductComponentForms) from the route, like in MM #}
+                         {% set edit_component_form = ProductComponentForm(obj=component) %} {# Temporalmente, usar la instancia aquí #}
+                         {{ edit_component_form.csrf_token }}
+                          {{ edit_component_form.id() }} {# Hidden field for component ID #}
+                         <div class="mb-3">
+                             {{ edit_component_form.material.label(class="form-label") }}
+                             {{ edit_component_form.material(class="form-select", required=true) }}
+                             {% if edit_component_form.material.errors %}
+                                 <div class="text-danger">{% for error in edit_component_form.material.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                         <div class="mb-3">
+                             {{ edit_component_form.quantity.label(class="form-label") }}
+                             {{ edit_component_form.quantity(class="form-control", type="number", min="0.01", step="any", required=true) }}
+                              {% if edit_component_form.quantity.errors %}
+                                 <div class="text-danger">{% for error in edit_component_form.quantity.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                         <div class="mb-3">
+                            {{ edit_component_form.unit_of_measure.label(class="form-label") }}
+                            {{ edit_component_form.unit_of_measure(class="form-control") }}
+                            {% if edit_component_form.unit_of_measure.errors %}
+                                 <div class="text-danger">{% for error in edit_component_form.unit_of_measure.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_component_form.weight.label(class="form-label") }}
+                            {{ edit_component_form.weight(class="form-control", type="number", min="0", step="any") }}
+                            {% if edit_component_form.weight.errors %}
+                                 <div class="text-danger">{% for error in edit_component_form.weight.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_component_form.position.label(class="form-label") }}
+                            {{ edit_component_form.position(class="form-control") }}
+                            {% if edit_component_form.position.errors %}
+                                 <div class="text-danger">{% for error in edit_component_form.position.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                          <div class="mb-3">
+                             {{ edit_component_form.notes.label(class="form-label") }}
+                             {{ edit_component_form.notes(class="form-control", rows="3") }}
+                              {% if edit_component_form.notes.errors %}
+                                 <div class="text-danger">{% for error in edit_component_form.notes.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                     </div>
+                     <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                     </div>
+                 </form>
+            </div>
+        </div>
+    </div>
+     {% endfor %}
+
+     {# Modals for Product Processes #}
+
+    <!-- Modal para Añadir Nuevo Proceso -->
+    <div class="modal fade" id="addProcessModal" tabindex="-1" aria-labelledby="addProcessModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addProcessModalLabel">Añadir Proceso a Hoja de Ruta de {{ product.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                 {# Action points to the add_product_process route for this product #}
+                <form action="{{ url_for('pp.add_product_process', product_id=product.id) }}" method="POST">
+                      <div class="modal-body">
+                         {# We will pass the add_process_form from the route #}
+                          {% set add_process_form = ProductProcessForm() %} {# Temporalmente, usar la instancia aquí. Ideally, pass from route #}
+                          {{ add_process_form.csrf_token }}
+                           <div class="mb-3">
+                             {{ add_process_form.process_type.label(class="form-label") }}
+                             {{ add_process_form.process_type(class="form-control") }}
+                             {% if add_process_form.process_type.errors %}
+                                 <div class="text-danger">{% for error in add_process_form.process_type.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                          <div class="mb-3">
+                             {{ add_process_form.sequence.label(class="form-label") }}
+                             {{ add_process_form.sequence(class="form-control", type="number", min="1") }}
+                             {% if add_process_form.sequence.errors %}
+                                 <div class="text-danger">{% for error in add_process_form.sequence.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                          <div class="mb-3">
+                             {{ add_process_form.estimated_time.label(class="form-label") }}
+                             {{ add_process_form.estimated_time(class="form-control", type="number", min="0", step="any") }}
+                             {% if add_process_form.estimated_time.errors %}
+                                 <div class="text-danger">{% for error in add_process_form.estimated_time.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                          <div class="mb-3">
+                             {{ add_process_form.notes.label(class="form-label") }}
+                             {{ add_process_form.notes(class="form-control", rows="3") }}
+                             {% if add_process_form.notes.errors %}
+                                 <div class="text-danger">{% for error in add_process_form.notes.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                          {# TODO: Add fields for required_skills, parameters, quality_checks (JSON fields) #}
+                      </div>
+                      <div class="modal-footer">
+                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                         <button type="submit" class="btn btn-primary">Añadir Proceso</button>
+                      </div>
+                  </form>
+            </div>
+        </div>
+    </div>
+
+     {# Modales para Editar Proceso (uno por cada proceso en el bucle) #}
+     {# These modals need forms passed from the route #}
+     {% for process in product.processes %}
+    <!-- Modal para Editar Proceso de la Hoja de Ruta -->
+    <div class="modal fade" id="editProcessModal{{ process.id }}" tabindex="-1" aria-labelledby="editProcessModalLabel{{ process.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editProcessModalLabel{{ process.id }}">Editar Proceso de Hoja de Ruta de {{ product.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                 {# Action points to the edit_product_process route #}
+                <form action="{{ url_for('pp.edit_product_process', process_id=process.id) }}" method="POST">
+                      <div class="modal-body">
+                          {# We need to pass an instance of ProductProcessForm for this specific process from the route #}
+                          {# TODO: Pass process_forms (list of ProductProcessForms) from the route #}
+                          {% set edit_process_form = ProductProcessForm(obj=process) %} {# Temporalmente, usar la instancia aquí #}
+                          {{ edit_process_form.csrf_token }}
+                          {{ edit_process_form.id() }} {# Hidden field for process ID #}
+                           <div class="mb-3">
+                             {{ edit_process_form.process_type.label(class="form-label") }}
+                             {{ edit_process_form.process_type(class="form-control") }}
+                             {% if edit_process_form.process_type.errors %}
+                                 <div class="text-danger">{% for error in edit_process_form.process_type.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                          <div class="mb-3">
+                             {{ edit_process_form.sequence.label(class="form-label") }}
+                             {{ edit_process_form.sequence(class="form-control", type="number", min="1") }}
+                             {% if edit_process_form.sequence.errors %}
+                                 <div class="text-danger">{% for error in edit_process_form.sequence.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                          <div class="mb-3">
+                             {{ edit_process_form.estimated_time.label(class="form-label") }}
+                             {{ edit_process_form.estimated_time(class="form-control", type="number", min="0", step="any") }}
+                             {% if edit_process_form.estimated_time.errors %}
+                                 <div class="text-danger">{% for error in edit_process_form.estimated_time.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                          <div class="mb-3">
+                             {{ edit_process_form.notes.label(class="form-label") }}
+                             {{ edit_process_form.notes(class="form-control", rows="3") }}
+                             {% if edit_process_form.notes.errors %}
+                                 <div class="text-danger">{% for error in edit_process_form.notes.errors %}{{ error }}{% endfor %}</div>
+                             {% endif %}
+                         </div>
+                          {# TODO: Add fields for required_skills, parameters, quality_checks (JSON fields) #}
+                      </div>
+                      <div class="modal-footer">
+                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                         <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                      </div>
+                  </form>
+            </div>
+        </div>
+    </div>
+     {% endfor %}
+
+
+{% endblock %}
+
+{# Script para abrir modal si hay errores de validación #}
+{# This script is similar to the one in MM add_edit_purchase_order.html #}
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Leer el parámetro 'modal' de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const modalId = urlParams.get('modal');
+
+        if (modalId) {
+            // Eliminar el parámetro 'modal' de la URL
+            urlParams.delete('modal');
+            const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+            window.history.replaceState({}, document.title, newUrl);
+
+            // Encontrar el elemento del modal por su ID
+            const modalElement = document.getElementById(modalId);
+
+            if (modalElement) {
+                // Usar la API de Bootstrap para mostrar el modal
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+
+                // Opcional: Enfocarse en el primer campo con error dentro del modal
+                const firstInvalidInput = modalElement.querySelector('.form-control.is-invalid');
+                if (firstInvalidInput) {
+                    firstInvalidInput.focus();
+                }
+            }
+        }
+    });
+</script>
+{% endblock %} 

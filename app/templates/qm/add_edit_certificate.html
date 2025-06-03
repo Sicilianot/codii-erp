@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800">{{ title }}</h1>
+    <p class="mb-4">Formulario para añadir o editar un certificado de calidad.</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Datos del Certificado</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data"> {# Importante para subida de archivos #}
+                {{ form.csrf_token }}
+                {{ form.id() }} {# Hidden field for ID #}
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                         {# TODO: Campo para certificate_number si se genera automáticamente #}
+                        {{ form.certificate_number.label(class="form-label") }}
+                        {{ form.certificate_number(class="form-control", disabled=True) if form.id.data else form.certificate_number(class="form-control") }}
+                        {% for error in form.certificate_number.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control") }}
+                        {% for error in form.title.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                 <div class="form-group">
+                    {{ form.standard_specification.label(class="form-label") }}
+                    {{ form.standard_specification(class="form-control") }}
+                    {% for error in form.standard_specification.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.issue_date.label(class="form-label") }}
+                         <div class="input-group date" id="issue_date_datepicker" data-target-input="nearest">
+                            {{ form.issue_date(class="form-control datetimepicker-input", data_target="#issue_date_datepicker") }}
+                            <div class="input-group-append" data-target="#issue_date_datepicker" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                        </div>
+                        {% for error in form.issue_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                         {{ form.expiry_date.label(class="form-label") }}
+                         <div class="input-group date" id="expiry_date_datepicker" data-target-input="nearest">
+                            {{ form.expiry_date(class="form-control datetimepicker-input", data_target="#expiry_date_datepicker") }}
+                            <div class="input-group-append" data-target="#expiry_date_datepicker" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                        </div>
+                        {% for error in form.expiry_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                 <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.status.label(class="form-label") }}
+                        {{ form.status(class="form-control") }}
+                        {% for error in form.status.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.issued_by.label(class="form-label") }}
+                        {{ form.issued_by(class="form-control") }}
+                        {% for error in form.issued_by.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                 <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.certified_party.label(class="form-label") }}
+                        {{ form.certified_party(class="form-control") }}
+                        {% for error in form.certified_party.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.file.label(class="form-label") }} {# Assuming the FileField is named 'file' #}
+                        {{ form.file(class="form-control-file") }}
+                        {% for error in form.file.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                         {# TODO: Mostrar nombre del archivo actual si se está editando #}
+                    </div>
+                </div>
+
+                 <div class="form-group">
+                    {{ form.notes.label(class="form-label") }}
+                    {{ form.notes(class="form-control", rows="3") }}
+                    {% for error in form.notes.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                {{ form.submit(class="btn btn-primary") }}
+                 <a href="{{ url_for('qm.list_certificates') }}" class="btn btn-secondary">Cancelar</a>
+
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type="text/javascript">
+    $(function () {
+        // Initialize datepickers
+        $('#issue_date_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+        $('#expiry_date_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+    });
+</script>
+{% endblock %} 

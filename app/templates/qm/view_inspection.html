@@ -1,0 +1,661 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Inspección de Calidad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <h1 class="h3 mb-2 text-gray-800">Inspección de Calidad #{{ inspection.inspection_number or inspection.id }}</h1>
+    <p class="mb-4">Detalles de la inspección de calidad.</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Información General</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Número:</strong> {{ inspection.inspection_number or 'N/A' }}</p>
+                    <p><strong>Tipo:</strong> {{ inspection.inspection_type | replace('_', ' ') | title }}</p>
+                    <p><strong>Estado:</strong> {{ inspection.status | replace('_', ' ') | title }}</p>
+                    <p><strong>Fecha de Inspección:</strong> {{ inspection.inspection_date.strftime('%Y-%m-%d %H:%M') if inspection.inspection_date else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Inspector:</strong> {{ inspection.inspector.username if inspection.inspector else 'N/A' }}</p>
+                    <p><strong>Resultado General:</strong> {{ inspection.result | replace('_', ' ') | title if inspection.result else 'N/A' }}</p>
+                    <p><strong>Creado por:</strong> {{ inspection.creator.username if inspection.creator else 'N/A' }}</p>
+                    <p><strong>Fecha de Creación:</strong> {{ inspection.created_at.strftime('%Y-%m-%d %H:%M') if inspection.created_at else 'N/A' }}</p>
+                </div>
+            </div>
+            <p><strong>Notas:</strong> {{ inspection.notes or 'N/A' }}</p>
+
+            <a href="{{ url_for('qm.edit_inspection', id=inspection.id) }}" class="btn btn-warning btn-sm mt-3">Editar Inspección</a>
+             <button type="button" class="btn btn-danger btn-sm mt-3" data-toggle="modal" data-target="#deleteModal{{ inspection.id }}">
+                Eliminar Inspección
+            </button>
+             <!-- Delete Inspection Modal -->
+            <div class="modal fade" id="deleteModal{{ inspection.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ inspection.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="deleteModalLabel{{ inspection.id }}">Confirmar Eliminación</h5>
+                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">¿Estás seguro de que deseas eliminar la inspección número <strong>{{ inspection.inspection_number or inspection.id }}</strong>? Esta acción no se puede deshacer.</div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            <form action="{{ url_for('qm.delete_inspection', id=inspection.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección para Checkpoints -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Puntos de Control (Checkpoints)</h6>
+             <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#addCheckpointModal">
+                <i class="fas fa-plus"></i> Añadir Checkpoint
+            </button>
+        </div>
+        <div class="card-body">
+             {% if inspection.checkpoints %}
+             <div class="table-responsive">
+                <table class="table table-bordered" id="checkpointsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                            <th>Requisito</th>
+                            <th>Resultado</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for checkpoint in inspection.checkpoints %}
+                        <tr>
+                            <td>{{ checkpoint.checkpoint_type }}</td>
+                            <td>{{ checkpoint.description or 'N/A' }}</td>
+                            <td>{{ checkpoint.requirement or 'N/A' }}</td>
+                            <td>
+                                {% if checkpoint.result_type == 'measured_value' %}
+                                    {{ checkpoint.measurement_value or 'N/A' }} {{ checkpoint.measurement_unit or '' }}
+                                {% else %}
+                                    {{ checkpoint.result or 'N/A' }}
+                                {% endif %}
+                            </td>
+                            <td>{{ checkpoint.status | replace('_', ' ') | title }}</td>
+                            <td>
+                                <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editCheckpointModal{{ checkpoint.id }}">
+                                    Editar
+                                </button>
+                                 <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteCheckpointModal{{ checkpoint.id }}">
+                                    Eliminar
+                                </button>
+
+                                <!-- Edit Checkpoint Modal -->
+                                <div class="modal fade" id="editCheckpointModal{{ checkpoint.id }}" tabindex="-1" role="dialog" aria-labelledby="editCheckpointModalLabel{{ checkpoint.id }}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editCheckpointModalLabel{{ checkpoint.id }}">Editar Punto de Control</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                {# Renderizar formulario de edición aquí. Necesitaríamos pasar un formulario específico para cada checkpoint desde la ruta, o usar JS para poblar uno genérico #}
+                                                {# Por ahora, un placeholder o un formulario básico sin precarga #}
+                                                <form action="{{ url_for('qm.edit_checkpoint', checkpoint_id=checkpoint.id) }}" method="POST">
+                                                    {{ add_checkpoint_form.csrf_token }} {# Usamos el mismo formulario pero re-renderizado #}
+                                                    {{ add_checkpoint_form.id(value=checkpoint.id) }} {# Pasar el ID del checkpoint #}
+                                                    <div class="form-group">
+                                                        {{ add_checkpoint_form.checkpoint_type.label(class="form-label") }}
+                                                        {{ add_checkpoint_form.checkpoint_type(class="form-control", value=checkpoint.checkpoint_type) }}
+                                                        {% for error in add_checkpoint_form.checkpoint_type.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="form-group">
+                                                        {{ add_checkpoint_form.description.label(class="form-label") }}
+                                                        {{ add_checkpoint_form.description(class="form-control", value=checkpoint.description) }}
+                                                        {% for error in add_checkpoint_form.description.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="form-group">
+                                                        {{ add_checkpoint_form.requirement.label(class="form-label") }}
+                                                        {{ add_checkpoint_form.requirement(class="form-control", value=checkpoint.requirement) }}
+                                                        {% for error in add_checkpoint_form.requirement.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_checkpoint_form.result_type.label(class="form-label") }}
+                                                        {{ add_checkpoint_form.result_type(class="form-control", value=checkpoint.result_type) }}
+                                                        {% for error in add_checkpoint_form.result_type.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_checkpoint_form.result.label(class="form-label") }}
+                                                        {{ add_checkpoint_form.result(class="form-control", value=checkpoint.result) }}
+                                                        {% for error in add_checkpoint_form.result.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-row">
+                                                         <div class="form-group col-md-6">
+                                                            {{ add_checkpoint_form.measurement_value.label(class="form-label") }}
+                                                            {{ add_checkpoint_form.measurement_value(class="form-control", value=checkpoint.measurement_value) }}
+                                                            {% for error in add_checkpoint_form.measurement_value.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                            {% endfor %}
+                                                         </div>
+                                                          <div class="form-group col-md-6">
+                                                            {{ add_checkpoint_form.measurement_unit.label(class="form-label") }}
+                                                            {{ add_checkpoint_form.measurement_unit(class="form-control", value=checkpoint.measurement_unit) }}
+                                                            {% for error in add_checkpoint_form.measurement_unit.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                            {% endfor %}
+                                                         </div>
+                                                     </div>
+                                                      <div class="form-group">
+                                                        {{ add_checkpoint_form.status.label(class="form-label") }}
+                                                        {{ add_checkpoint_form.status(class="form-control", value=checkpoint.status) }}
+                                                        {% for error in add_checkpoint_form.status.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_checkpoint_form.notes.label(class="form-label") }}
+                                                        {{ add_checkpoint_form.notes(class="form-control", value=checkpoint.notes) }}
+                                                        {% for error in add_checkpoint_form.notes.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+
+                                                    <div class="modal-footer">
+                                                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                        {{ add_checkpoint_form.submit(class="btn btn-primary", value="Guardar Cambios") }}
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Delete Checkpoint Modal -->
+                                <div class="modal fade" id="deleteCheckpointModal{{ checkpoint.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteCheckpointModalLabel{{ checkpoint.id }}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteCheckpointModalLabel{{ checkpoint.id }}">Confirmar Eliminación</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">¿Estás seguro de que deseas eliminar este punto de control? Esta acción no se puede deshacer.</div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                <form action="{{ url_for('qm.delete_checkpoint', checkpoint_id=checkpoint.id) }}" method="POST" style="display: inline;">
+                                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+             </div>
+             {% else %}
+             <p>No hay puntos de control registrados para esta inspección.</p>
+             {% endif %}
+        </div>
+    </div>
+
+    <!-- Add Checkpoint Modal -->
+    <div class="modal fade" id="addCheckpointModal" tabindex="-1" role="dialog" aria-labelledby="addCheckpointModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addCheckpointModalLabel">Añadir Nuevo Punto de Control</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('qm.add_checkpoint', inspection_id=inspection.id) }}" method="POST">
+                        {{ add_checkpoint_form.csrf_token }}
+                         {# Omitir el campo inspection_id, ya que se pasa en la URL de la acción del formulario #}
+                        {{ add_checkpoint_form.id() }} {# Asegurarse de que el campo id oculto esté presente #}
+
+                        <div class="form-group">
+                            {{ add_checkpoint_form.checkpoint_type.label(class="form-label") }}
+                            {{ add_checkpoint_form.checkpoint_type(class="form-control") }}
+                            {% for error in add_checkpoint_form.checkpoint_type.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            {{ add_checkpoint_form.description.label(class="form-label") }}
+                            {{ add_checkpoint_form.description(class="form-control") }}
+                            {% for error in add_checkpoint_form.description.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_checkpoint_form.requirement.label(class="form-label") }}
+                            {{ add_checkpoint_form.requirement(class="form-control") }}
+                            {% for error in add_checkpoint_form.requirement.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            {{ add_checkpoint_form.result_type.label(class="form-label") }}
+                            {{ add_checkpoint_form.result_type(class="form-control") }}
+                            {% for error in add_checkpoint_form.result_type.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_checkpoint_form.result.label(class="form-label") }}
+                            {{ add_checkpoint_form.result(class="form-control") }}
+                            {% for error in add_checkpoint_form.result.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-row">
+                             <div class="form-group col-md-6">
+                                {{ add_checkpoint_form.measurement_value.label(class="form-label") }}
+                                {{ add_checkpoint_form.measurement_value(class="form-control") }}
+                                {% for error in add_checkpoint_form.measurement_value.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                                {% endfor %}
+                             </div>
+                              <div class="form-group col-md-6">
+                                {{ add_checkpoint_form.measurement_unit.label(class="form-label") }}
+                                {{ add_checkpoint_form.measurement_unit(class="form-control") }}
+                                {% for error in add_checkpoint_form.measurement_unit.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                                {% endfor %}
+                             </div>
+                         </div>
+                          <div class="form-group">
+                            {{ add_checkpoint_form.status.label(class="form-label") }}
+                            {{ add_checkpoint_form.status(class="form-control") }}
+                            {% for error in add_checkpoint_form.status.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_checkpoint_form.notes.label(class="form-label") }}
+                            {{ add_checkpoint_form.notes(class="form-control") }}
+                            {% for error in add_checkpoint_form.notes.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            {{ add_checkpoint_form.submit(class="btn btn-primary", value="Añadir Checkpoint") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección para No Conformidades -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">No Conformidades</h6>
+            <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#addNonConformityModal">
+                <i class="fas fa-plus"></i> Añadir No Conformidad
+            </button>
+        </div>
+        <div class="card-body">
+            {% if inspection.non_conformities %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="nonConformitiesTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Severidad</th>
+                            <th>Descripción</th>
+                            <th>Estado</th>
+                            <th>Asignado A</th>
+                            <th>Fecha Límite</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for nc in inspection.non_conformities %}
+                        <tr>
+                            <td>{{ nc.severity | title }}</td>
+                            <td>{{ nc.description | truncate(50) }}</td>
+                            <td>{{ nc.status | title }}</td>
+                            <td>{{ nc.assigned_to.username if nc.assigned_to else 'N/A' }}</td>
+                            <td>{{ nc.due_date.strftime('%Y-%m-%d') if nc.due_date else 'N/A' }}</td>
+                            <td>
+                                <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editNonConformityModal{{ nc.id }}">
+                                    Editar
+                                </button>
+                                {% if nc.status != 'closed' %}
+                                    <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#closeNonConformityModal{{ nc.id }}">
+                                        Cerrar
+                                    </button>
+                                {% endif %}
+                                 <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteNonConformityModal{{ nc.id }}">
+                                    Eliminar
+                                </button>
+
+                                <!-- Edit Non-Conformity Modal -->
+                                <div class="modal fade" id="editNonConformityModal{{ nc.id }}" tabindex="-1" role="dialog" aria-labelledby="editNonConformityModalLabel{{ nc.id }}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editNonConformityModalLabel{{ nc.id }}">Editar No Conformidad</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                {# Renderizar formulario de edición aquí. Usamos el mismo formulario base y lo llenamos con JS o Jinja2 #}
+                                                <form action="{{ url_for('qm.edit_non_conformity', id=nc.id) }}" method="POST">
+                                                     {{ add_nonconformity_form.csrf_token }} {# Usamos el mismo formulario base #}
+                                                     {{ add_nonconformity_form.id(value=nc.id) }} {# Pasar el ID de la NC #}
+
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.severity.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.severity(class="form-control", value=nc.severity) }}
+                                                        {% for error in add_nonconformity_form.severity.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.description.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.description(class="form-control", rows=4, value=nc.description) }}
+                                                        {% for error in add_nonconformity_form.description.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.root_cause.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.root_cause(class="form-control", rows=4, value=nc.root_cause) }}
+                                                        {% for error in add_nonconformity_form.root_cause.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.corrective_action.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.corrective_action(class="form-control", rows=4, value=nc.corrective_action) }}
+                                                        {% for error in add_nonconformity_form.corrective_action.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.preventive_action.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.preventive_action(class="form-control", rows=4, value=nc.preventive_action) }}
+                                                        {% for error in add_nonconformity_form.preventive_action.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="form-group">
+                                                        {{ add_nonconformity_form.status.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.status(class="form-control", value=nc.status) }}
+                                                        {% for error in add_nonconformity_form.status.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.assigned_to_id.label(class="form-label") }}
+                                                        {# Para precargar QuerySelectField, necesitas pasar el objeto completo si usas obj=, o solo el ID si lo haces manualmente. Aquí pasamos el objeto nc.assigned_to si existe #}
+                                                        {{ add_nonconformity_form.assigned_to_id(class="form-control", data=nc.assigned_to) }}
+                                                        {% for error in add_nonconformity_form.assigned_to_id.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.due_date.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.due_date(class="form-control", value=nc.due_date) }}
+                                                        {% for error in add_nonconformity_form.due_date.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.notes.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.notes(class="form-control", rows=3, value=nc.notes) }}
+                                                        {% for error in add_nonconformity_form.notes.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    
+
+                                                    <div class="modal-footer">
+                                                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Close Non-Conformity Modal -->
+                                <div class="modal fade" id="closeNonConformityModal{{ nc.id }}" tabindex="-1" role="dialog" aria-labelledby="closeNonConformityModalLabel{{ nc.id }}" aria-hidden="true">
+                                     <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="closeNonConformityModalLabel{{ nc.id }}">Cerrar No Conformidad</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                 <p>¿Estás seguro de que deseas cerrar esta no conformidad? Confirma la fecha y la persona que verifica.</p>
+                                                 {# Usamos el formulario base, llenando solo los campos necesarios para el cierre #}
+                                                <form action="{{ url_for('qm.close_non_conformity', id=nc.id) }}" method="POST">
+                                                     {{ add_nonconformity_form.csrf_token }}
+                                                      {{ add_nonconformity_form.id(value=nc.id) }} {# Pasar el ID de la NC #}
+
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.verified_by_id.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.verified_by_id(class="form-control") }} {# Este campo no se pre-llenará automáticamente con obj=, puede requerir JS o pasar un formulario específico #}
+                                                        {% for error in add_nonconformity_form.verified_by_id.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.verification_date.label(class="form-label") }}
+                                                        {{ add_nonconformity_form.verification_date(class="form-control") }} {# Este campo no se pre-llenará automáticamente con obj=, puede requerir JS o pasar un formulario específico #}
+                                                        {% for error in add_nonconformity_form.verification_date.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    {# Opcional: campo para notas de cierre si es diferente del campo notes general #}
+                                                     <div class="form-group">
+                                                        {{ add_nonconformity_form.notes.label(class="form-label") }} {# Reutilizamos el campo notas #}
+                                                        {{ add_nonconformity_form.notes(class="form-control", rows=3, value=nc.notes) }}
+                                                        {% for error in add_nonconformity_form.notes.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+
+                                                    <div class="modal-footer">
+                                                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-success">Cerrar No Conformidad</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Delete Non-Conformity Modal -->
+                                <div class="modal fade" id="deleteNonConformityModal{{ nc.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteNonConformityModalLabel{{ nc.id }}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteNonConformityModalLabel{{ nc.id }}">Confirmar Eliminación</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">¿Estás seguro de que deseas eliminar esta no conformidad? Esta acción no se puede deshacer.</div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                <form action="{{ url_for('qm.delete_non_conformity', id=nc.id) }}" method="POST" style="display: inline;">
+                                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No hay no conformidades registradas para esta inspección.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Add Non-Conformity Modal -->
+    <div class="modal fade" id="addNonConformityModal" tabindex="-1" role="dialog" aria-labelledby="addNonConformityModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addNonConformityModalLabel">Añadir Nueva No Conformidad</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    {# Renderizar el formulario de añadir no conformidad aquí #}
+                    <form action="{{ url_for('qm.add_non_conformity', inspection_id=inspection.id) }}" method="POST">
+                        {{ add_nonconformity_form.csrf_token }}
+                        {# Omitir el campo inspection_id/audit_id, ya que se pasa en la URL #}
+                         {{ add_nonconformity_form.id() }} {# Asegurarse de que el campo id oculto esté presente #}
+
+                         <div class="form-group">
+                            {{ add_nonconformity_form.severity.label(class="form-label") }}
+                            {{ add_nonconformity_form.severity(class="form-control") }}
+                            {% for error in add_nonconformity_form.severity.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_nonconformity_form.description.label(class="form-label") }}
+                            {{ add_nonconformity_form.description(class="form-control", rows=4) }}
+                            {% for error in add_nonconformity_form.description.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_nonconformity_form.root_cause.label(class="form-label") }}
+                            {{ add_nonconformity_form.root_cause(class="form-control", rows=4) }}
+                            {% for error in add_nonconformity_form.root_cause.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_nonconformity_form.corrective_action.label(class="form-label") }}
+                            {{ add_nonconformity_form.corrective_action(class="form-control", rows=4) }}
+                            {% for error in add_nonconformity_form.corrective_action.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_nonconformity_form.preventive_action.label(class="form-label") }}
+                            {{ add_nonconformity_form.preventive_action(class="form-control", rows=4) }}
+                            {% for error in add_nonconformity_form.preventive_action.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            {{ add_nonconformity_form.status.label(class="form-label") }}
+                            {{ add_nonconformity_form.status(class="form-control") }}
+                            {% for error in add_nonconformity_form.status.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_nonconformity_form.assigned_to_id.label(class="form-label") }}
+                            {{ add_nonconformity_form.assigned_to_id(class="form-control") }}
+                            {% for error in add_nonconformity_form.assigned_to_id.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_nonconformity_form.due_date.label(class="form-label") }}
+                            {{ add_nonconformity_form.due_date(class="form-control") }}
+                            {% for error in add_nonconformity_form.due_date.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_nonconformity_form.notes.label(class="form-label") }}
+                            {{ add_nonconformity_form.notes(class="form-control", rows=3) }}
+                            {% for error in add_nonconformity_form.notes.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar No Conformidad</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# TODO: Sección para CAPAs relacionadas #}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Acciones Correctivas/Preventivas (CAPA)</h6>
+        </div>
+        <div class="card-body">
+             <p>Lista de CAPAs relacionadas con esta inspección.</p>
+             {# TODO: Mostrar lista de CAPAs y botón para añadir #}
+             <a href="#" class="btn btn-primary btn-sm mt-3">Añadir CAPA</a> {# TODO: Enlazar a ruta real #}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Script para abrir modales si hay un parámetro 'modal' en la URL (indicando errores de validación)
+    $(document).ready(function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const modalToOpen = urlParams.get('modal');
+
+        if (modalToOpen) {
+            $(`#${modalToOpen}`).modal('show');
+             // Opcional: Limpiar el parámetro modal de la URL sin recargar la página
+            history.replaceState(null, null, window.location.pathname + window.location.search.replace(/&?modal=[^&]*/, ''));
+        }
+    });
+
+     // TODO: Implementar lógica JS para poblar dinámicamente los formularios de edición de checkpoint si es necesario
+     // O asegurar que la precarga con Jinja es suficiente para todos los campos.
+</script>
+{% endblock %} 

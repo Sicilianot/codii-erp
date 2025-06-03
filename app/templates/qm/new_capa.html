@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>{{ title }}</h2>
+
+    {# TODO: Add form for creating/editing CAPA #}
+    <form method="POST">
+        {{ form.csrf_token }}
+        {{ form.hidden_tag() }} {# Para el campo id en edición #}
+
+        <div class="mb-3">
+            {{ form.capa_type.label(class="form-label") }}
+            {{ form.capa_type(class="form-control") }}
+            {% for error in form.capa_type.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.source_type.label(class="form-label") }}
+            {{ form.source_type(class="form-control") }}
+            {% for error in form.source_type.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.source_id.label(class="form-label") }}
+            {{ form.source_id(class="form-control") }}
+            {% for error in form.source_id.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control", rows=4) }}
+            {% for error in form.description.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+         <div class="mb-3">
+            {{ form.root_cause.label(class="form-label") }}
+            {{ form.root_cause(class="form-control", rows=4) }}
+            {% for error in form.root_cause.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.proposed_action.label(class="form-label") }}
+            {{ form.proposed_action(class="form-control", rows=4) }}
+            {% for error in form.proposed_action.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.implemented_action.label(class="form-label") }}
+            {{ form.implemented_action(class="form-control", rows=4) }}
+            {% for error in form.implemented_action.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.status.label(class="form-label") }}
+            {{ form.status(class="form-control") }}
+            {% for error in form.status.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+         <div class="mb-3">
+            {{ form.assigned_to_id.label(class="form-label") }}
+            {{ form.assigned_to_id(class="form-control") }}
+            {% for error in form.assigned_to_id.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.due_date.label(class="form-label") }}
+            {{ form.due_date(class="form-control") }}
+            {% for error in form.due_date.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+         <div class="mb-3">
+            {{ form.completion_date.label(class="form-label") }}
+            {{ form.completion_date(class="form-control") }}
+            {% for error in form.completion_date.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.verification_method.label(class="form-label") }}
+            {{ form.verification_method(class="form-control", rows=3) }}
+            {% for error in form.verification_method.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.verified_by_id.label(class="form-label") }}
+            {{ form.verified_by_id(class="form-control") }}
+            {% for error in form.verified_by_id.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.verification_date.label(class="form-label") }}
+            {{ form.verification_date(class="form-control") }}
+            {% for error in form.verification_date.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.effectiveness_status.label(class="form-label") }}
+            {{ form.effectiveness_status(class="form-control") }}
+            {% for error in form.effectiveness_status.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.notes.label(class="form-label") }}
+            {{ form.notes(class="form-control", rows=4) }}
+            {% for error in form.notes.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="{{ url_for('qm.list_capas') }}" class="btn btn-secondary">Cancelar</a>
+
+    </form>
+
+{% endblock %} 

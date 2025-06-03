@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo Control de Calidad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Nuevo Control de Calidad para Orden #{{ order.order_number }}</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('pp.order_detail', id=order.id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a la Orden
+            </a>
+        </div>
+    </div>
+
+    <form method="POST" class="needs-validation" novalidate>
+        {{ form.csrf_token }}
+        <div class="card">
+            <div class="card-body">
+                <input type="hidden" name="order_id" value="{{ order.id }}">
+
+                <div class="mb-3">
+                    {{ form.check_type.label(class="form-label") }}
+                    {{ form.check_type(class="form-control", required=true) }}
+                    {% for error in form.check_type.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.status.label(class="form-label") }}
+                    {{ form.status(class="form-select", required=true) }}
+                    {% for error in form.status.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.result.label(class="form-label") }}
+                    {{ form.result(class="form-control", required=false) }}
+                    {% for error in form.result.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.check_date.label(class="form-label") }}
+                    {{ form.check_date(class="form-control", required=true) }}
+                    {% for error in form.check_date.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.inspector_id.label(class="form-label") }}
+                    {{ form.inspector_id(class="form-select", required=false) }}
+                    {% for error in form.inspector_id.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                 <div class="mb-3">
+                    {{ form.notes.label(class="form-label") }}
+                    {{ form.notes(class="form-control", rows="3") }}
+                    {% for error in form.notes.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar Control
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% block scripts %}
+<script>
+    // Validación del formulario
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+</script>
+{% endblock %}
+{% endblock %} 

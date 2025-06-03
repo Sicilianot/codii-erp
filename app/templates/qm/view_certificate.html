@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Certificado de Calidad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <h1 class="h3 mb-2 text-gray-800">Certificado #{{ certificate.certificate_number or certificate.id }}</h1>
+    <p class="mb-4">Detalles del certificado de calidad.</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Información General</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Número:</strong> {{ certificate.certificate_number or 'N/A' }}</p>
+                    <p><strong>Título:</strong> {{ certificate.title or 'N/A' }}</p>
+                    <p><strong>Estándar/Especificación:</strong> {{ certificate.standard_specification or 'N/A' }}</p>
+                    <p><strong>Fecha Emisión:</strong> {{ certificate.issue_date.strftime('%Y-%m-%d') if certificate.issue_date else 'N/A' }}</p>
+                    <p><strong>Fecha Expiración:</strong> {{ certificate.expiry_date.strftime('%Y-%m-%d') if certificate.expiry_date else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Estado:</strong> {{ certificate.status | title }}</p>
+                     {# TODO: Mostrar nombre del usuario/party si issued_by puede ser ambos #}
+                    <p><strong>Emitido Por:</strong> {{ certificate.issued_by.username if certificate.issued_by else 'N/A' }}</p>
+                    <p><strong>Parte Certificada:</strong> {{ certificate.certified_party.name if certificate.certified_party else 'N/A' }}</p>
+                    <p><strong>Creado por:</strong> {{ certificate.creator.username if certificate.creator else 'N/A' }}</p>
+                    <p><strong>Fecha de Creación:</strong> {{ certificate.created_at.strftime('%Y-%m-%d %H:%M') if certificate.created_at else 'N/A' }}</p>
+                </div>
+            </div>
+            <p><strong>Archivo:</strong>
+                 {% if certificate.file_path %}
+                 {# TODO: Enlace para descargar el archivo #}
+                    <a href="#">Descargar Archivo</a>
+                 {% else %}
+                 N/A
+                 {% endif %}
+            </p>
+            <p><strong>Notas:</strong> {{ certificate.notes or 'N/A' }}</p>
+
+            <a href="{{ url_for('qm.edit_certificate', id=certificate.id) }}" class="btn btn-warning btn-sm mt-3">Editar Certificado</a>
+             <button type="button" class="btn btn-danger btn-sm mt-3" data-toggle="modal" data-target="#deleteCertificateModal{{ certificate.id }}">
+                Eliminar Certificado
+            </button>
+             <!-- Delete Certificate Modal -->
+            <div class="modal fade" id="deleteCertificateModal{{ certificate.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteCertificateModalLabel{{ certificate.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="deleteCertificateModalLabel{{ certificate.id }}">Confirmar Eliminación</h5>
+                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">¿Estás seguro de que deseas eliminar el certificado número <strong>{{ certificate.certificate_number or certificate.id }}</strong>? Esta acción no se puede deshacer.</div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            <form action="{{ url_for('qm.delete_certificate', id=certificate.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% endblock %} 

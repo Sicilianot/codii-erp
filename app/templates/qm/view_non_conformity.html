@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de No Conformidad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <h1 class="h3 mb-2 text-gray-800">No Conformidad #{{ non_conformity.id }}</h1> {# O número si se genera #}
+    <p class="mb-4">Detalles de la no conformidad.</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Información General</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>ID:</strong> {{ non_conformity.id }}</p>
+                    <p><strong>Severidad:</strong> {{ non_conformity.severity | title }}</p>
+                    <p><strong>Estado:</strong> {{ non_conformity.status | title }}</p>
+                    <p><strong>Asignado A:</strong> {{ non_conformity.assigned_to.username if non_conformity.assigned_to else 'N/A' }}</p>
+                    <p><strong>Fecha Límite:</strong> {{ non_conformity.due_date.strftime('%Y-%m-%d') if non_conformity.due_date else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6">
+                     {# TODO: Mostrar Inspección/Auditoría relacionada si existe #}
+                    <p><strong>Fuente (TODO):</strong> N/A</p>
+                    <p><strong>Fecha de Cierre:</strong> {{ non_conformity.completion_date.strftime('%Y-%m-%d') if non_conformity.completion_date else 'N/A' }}</p>
+                    <p><strong>Verificado Por:</strong> {{ non_conformity.verified_by.username if non_conformity.verified_by else 'N/A' }}</p>
+                    <p><strong>Fecha de Verificación:</strong> {{ non_conformity.verification_date.strftime('%Y-%m-%d') if non_conformity.verification_date else 'N/A' }}</p>
+                    <p><strong>Creado por:</strong> {{ non_conformity.creator.username if non_conformity.creator else 'N/A' }}</p>
+                    <p><strong>Fecha de Creación:</strong> {{ non_conformity.created_at.strftime('%Y-%m-%d %H:%M') if non_conformity.created_at else 'N/A' }}</p>
+                </div>
+            </div>
+            <p><strong>Descripción:</strong> {{ non_conformity.description }}</p>
+            <p><strong>Causa Raíz:</strong> {{ non_conformity.root_cause or 'N/A' }}</p>
+            <p><strong>Acción Correctiva:</strong> {{ non_conformity.corrective_action or 'N/A' }}</p>
+            <p><strong>Acción Preventiva:</strong> {{ non_conformity.preventive_action or 'N/A' }}</p>
+            <p><strong>Notas Adicionales:</strong> {{ non_conformity.notes or 'N/A' }}</p>
+
+            <a href="{{ url_for('qm.edit_non_conformity', id=non_conformity.id) }}" class="btn btn-warning btn-sm mt-3">Editar No Conformidad</a>
+             <button type="button" class="btn btn-danger btn-sm mt-3" data-toggle="modal" data-target="#deleteNCModal{{ non_conformity.id }}">
+                Eliminar No Conformidad
+            </button>
+             <!-- Delete NC Modal -->
+            <div class="modal fade" id="deleteNCModal{{ non_conformity.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteNCModalLabel{{ non_conformity.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="deleteNCModalLabel{{ non_conformity.id }}">Confirmar Eliminación</h5>
+                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">¿Estás seguro de que deseas eliminar la No Conformidad ID <strong>{{ non_conformity.id }}</strong>? Esta acción no se puede deshacer.</div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            <form action="{{ url_for('qm.delete_non_conformity', id=non_conformity.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# TODO: Sección para CAPAs asociadas (si se gestionan desde aquí) #}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Acciones Correctivas/Preventivas (CAPA) Relacionadas</h6>
+        </div>
+        <div class="card-body">
+             <p>Lista de CAPAs asociadas a esta no conformidad.</p>
+             {# TODO: Mostrar lista de CAPAs y botón para añadir #}
+             <a href="#" class="btn btn-primary btn-sm mt-3">Añadir CAPA Relacionada</a> {# TODO: Enlazar a ruta real #}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{# TODO: Scripts para modales de añadir/editar CAPA si se usan #}
+{% endblock %} 

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Categorías de Materiales{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2>Categorías de Materiales</h2>
+            <a href="{{ url_for('mm.add_material_category') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Añadir Nueva Categoría</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Color</th>
+                                    <th>Activo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                <tr>
+                                    <td>{{ category.name }}</td>
+                                    <td>{{ category.description if category.description else '' }}</td>
+                                    <td>
+                                        <span style="display: inline-block; width: 20px; height: 20px; background-color: {{ category.color }}; vertical-align: middle; margin-right: 5px;"></span>
+                                        {{ category.color }}
+                                    </td>
+                                    <td>{% if category.is_active %}Sí{% else %}No{% endif %}</td>
+                                    <td>
+                                        <div class="btn-group" role="group" aria-label="Acciones de Categoría">
+                                            <a href="{{ url_for('mm.edit_material_category', id=category.id) }}" class="btn btn-sm btn-primary" title="Editar"><i class="fas fa-edit"></i></a>
+                                            <form action="{{ url_for('mm.delete_material_category', id=category.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar esta categoría de material?\nEsta acción no se puede deshacer y puede afectar materiales asociados.');">
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No hay categorías de materiales registradas.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

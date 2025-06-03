@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Roles - ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Gestión de Roles</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoleModal">
+            <i class="fas fa-plus me-2"></i>
+            Nuevo Rol
+        </button>
+    </div>
+
+    <!-- Tabla de Roles -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Color</th>
+                            <th>Usuarios</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for role in roles %}
+                        <tr>
+                            <td>{{ role.id }}</td>
+                            <td>
+                                <span class="badge bg-{{ role.color }}">
+                                    {{ role.name }}
+                                </span>
+                            </td>
+                            <td>{{ role.description }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="color-preview me-2" style="background-color: {{ role.color }}"></div>
+                                    {{ role.color }}
+                                </div>
+                            </td>
+                            <td>{{ role.users|length }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editRoleModal{{ role.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#permissionsModal{{ role.id }}">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+                                    {% if not role.is_system %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteRoleModal{{ role.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Rol -->
+<div class="modal fade" id="createRoleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Rol</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('user.create_role') }}" class="needs-validation" novalidate>
+                {{ create_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nombre</label>
+                        {{ create_form.name(class="form-control") }}
+                        {% if create_form.name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in create_form.name.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        {{ create_form.description(class="form-control") }}
+                        {% if create_form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in create_form.description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="color" class="form-label">Color</label>
+                        <div class="input-group">
+                            {{ create_form.color(class="form-control", type="color") }}
+                            <input type="text" class="form-control" id="colorText" 
+                                   value="{{ create_form.color.data or '#0d6efd' }}" 
+                                   pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$">
+                        </div>
+                        {% if create_form.color.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in create_form.color.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Rol</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modales Editar Rol -->
+{% for role in roles %}
+<div class="modal fade" id="editRoleModal{{ role.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Rol</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('user.edit_role', id=role.id) }}" class="needs-validation" novalidate>
+                {{ edit_forms[role.id].hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nombre</label>
+                        {{ edit_forms[role.id].name(class="form-control") }}
+                        {% if edit_forms[role.id].name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in edit_forms[role.id].name.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        {{ edit_forms[role.id].description(class="form-control") }}
+                        {% if edit_forms[role.id].description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in edit_forms[role.id].description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="color" class="form-label">Color</label>
+                        <div class="input-group">
+                            {{ edit_forms[role.id].color(class="form-control", type="color") }}
+                            <input type="text" class="form-control" id="colorText{{ role.id }}" 
+                                   value="{{ edit_forms[role.id].color.data }}" 
+                                   pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$">
+                        </div>
+                        {% if edit_forms[role.id].color.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in edit_forms[role.id].color.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Permisos -->
+<div class="modal fade" id="permissionsModal{{ role.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Permisos - {{ role.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('user.update_role_permissions', id=role.id) }}" class="needs-validation" novalidate>
+                {{ permission_forms[role.id].hidden_tag() }}
+                <div class="modal-body">
+                    <div class="row">
+                        {% for module, permissions in permission_forms[role.id].permissions.items() %}
+                        <div class="col-md-6 mb-4">
+                            <h6 class="mb-3">{{ module|title }}</h6>
+                            {% for permission in permissions %}
+                            <div class="form-check mb-2">
+                                {{ permission(class="form-check-input") }}
+                                <label class="form-check-label" for="{{ permission.id }}">
+                                    {{ permission.label.text }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Permisos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Eliminar Rol -->
+{% if not role.is_system %}
+<div class="modal fade" id="deleteRoleModal{{ role.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar Rol</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar el rol <strong>{{ role.name }}</strong>?</p>
+                {% if role.users|length > 0 %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Este rol tiene {{ role.users|length }} usuarios asignados. 
+                    Deberá reasignar estos usuarios a otro rol antes de eliminarlo.
+                </div>
+                {% endif %}
+                <p class="text-danger">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('user.delete_role', id=role.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger" {% if role.users|length > 0 %}disabled{% endif %}>
+                        Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Color picker sync
+    const syncColorInputs = (colorInput, textInput) => {
+        colorInput.addEventListener('input', function() {
+            textInput.value = this.value;
+        });
+        
+        textInput.addEventListener('input', function() {
+            if (this.value.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
+                colorInput.value = this.value;
+            }
+        });
+    };
+
+    // Initialize color pickers
+    syncColorInputs(document.querySelector('#color'), document.querySelector('#colorText'));
+    {% for role in roles %}
+    syncColorInputs(
+        document.querySelector('#color{{ role.id }}'),
+        document.querySelector('#colorText{{ role.id }}')
+    );
+    {% endfor %}
+
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+</script>
+{% endblock %} 

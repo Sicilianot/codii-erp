@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Auditoría #{{ audit.audit_number }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-2xl font-semibold mb-6">Detalle de Auditoría: {{ audit.audit_number }}</h1>
+
+    {# Información general de la auditoría #}
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Información General</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <p class="text-gray-600">Número de Auditoría:</p>
+                <p class="font-medium">{{ audit.audit_number }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Tipo de Auditoría:</p>
+                <p class="font-medium">{{ audit.audit_type }}</p>
+            </div>
+            <div class="md:col-span-2">
+                <p class="text-gray-600">Alcance:</p>
+                <p class="font-medium">{{ audit.scope }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Fecha Planificada:</p>
+                <p class="font-medium">{{ audit.planned_date.strftime('%Y-%m-%d') if audit.planned_date else 'N/A' }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Fecha de Ejecución:</p>
+                <p class="font-medium">{{ audit.executed_date.strftime('%Y-%m-%d') if audit.executed_date else 'N/A' }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Estado:</p>
+                <p class="font-medium">{{ audit.status }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Auditor Líder:</p>
+                <p class="font-medium">{{ audit.lead_auditor.username if audit.lead_auditor else 'Sin asignar' }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Área Auditada:</p>
+                <p class="font-medium">{{ audit.audited_area or 'N/A' }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Fecha de Informe:</p>
+                <p class="font-medium">{{ audit.report_date.strftime('%Y-%m-%d') if audit.report_date else 'N/A' }}</p>
+            </div>
+              <div class="md:col-span-2">
+                <p class="text-gray-600">Notas:</p>
+                <p class="font-medium">{{ audit.notes or 'Sin notas' }}</p>
+            </div>
+        </div>
+         {# Acciones principales de la auditoría #}
+        <div class="mt-6 flex space-x-4">
+             <a href="{{ url_for('qm.edit_audit', id=audit.id) }}" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Editar Auditoría</a>
+
+             {# Botón para Cancelar (usar formulario POST) #}
+            <form action="{{ url_for('qm.cancel_audit', id=audit.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de cancelar esta auditoría?');">
+                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600" {% if audit.status in ['completed', 'cancelled'] %} disabled {% endif %}>Cancelar Auditoría</button>
+            </form>
+
+            {# Botón para Completar (usar formulario POST) #}
+             <form action="{{ url_for('qm.complete_audit', id=audit.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de marcar esta auditoría como completada?');">
+                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" {% if audit.status in ['completed', 'cancelled'] %} disabled {% endif %}>Completar Auditoría</button>
+            </form>
+        </div>
+    </div>
+
+     {# Seccion Hallazgos de Auditoría #}
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Hallazgos de Auditoría</h2>
+         <button id="btn-new-finding" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">Añadir Hallazgo</button>
+
+         {# Tabla de Hallazgos #}
+         <div class="overflow-x-auto">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
+                         <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Severidad</th>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Asignado A</th>
+                         <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha Límite</th>
+                         <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha Cierre</th>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                     {% for finding in audit.findings %}
+                    <tr>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{ finding.finding_type }}</td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{ finding.description }}</td>
+                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{ finding.severity }}</td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{ finding.status }}</td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{ finding.assigned_to.username if finding.assigned_to else 'Sin asignar' }}</td>
+                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{ finding.due_date.strftime('%Y-%m-%d') if finding.due_date else 'N/A' }}</td>
+                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{ finding.completion_date.strftime('%Y-%m-%d') if finding.completion_date else 'N/A' }}</td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-right">
+                            {# Botón para Editar (abrir modal con formulario pre-llenado) #}
+                             <button class="text-yellow-600 hover:underline mr-3 btn-edit-finding" data-id="{{ finding.id }}" data-finding_type="{{ finding.finding_type or '' }}" data-description="{{ finding.description or '' }}" data-severity="{{ finding.severity or '' }}" data-status="{{ finding.status or '' }}" data-assigned_to_id="{{ finding.assigned_to_id or '' }}" data-due_date="{{ finding.due_date.strftime('%Y-%m-%d') if finding.due_date else '' }}" data-notes="{{ finding.notes or '' }}">Editar</button>
+                            {% if finding.status != 'closed' %}
+                             {# Botón para Cerrar (abrir modal con formulario) #}
+                             <button class="text-green-600 hover:underline mr-3 btn-close-finding" data-id="{{ finding.id }}" data-verified_by_id="{{ finding.verified_by_id or '' }}" data-verification_date="{{ finding.verification_date.strftime('%Y-%m-%d') if finding.verification_date else '' }}" data-notes="{{ finding.notes or '' }}">Cerrar</button>
+                            {% endif %}
+                             {# TODO: Implementar ruta y botón de eliminar Hallazgo #}
+                            {# <form action="{{ url_for('qm.delete_finding', id=finding.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este Hallazgo?');">
+                                <button type="submit" class="text-red-600 hover:underline">Eliminar</button>
+                            </form> #}
+                        </td>
+                    </tr>
+                     {% else %}
+                    <tr>
+                        <td colspan="8" class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">No hay hallazgos para esta auditoría.</td>
+                    </tr>
+                     {% endfor %}
+                </tbody>
+            </table>
+         </div>
+    </div>
+
+    {# Botón para volver #}
+     <div class="mt-6">
+        <a href="{{ url_for('qm.list_audits') }}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Volver a la Lista de Auditorías</a>
+     </div>
+
+</div>
+
+{# Modales para formularios (estos se llenarán e implementarán con JS más adelante) #}
+{# Modal Añadir Hallazgo #}
+<div id="modal-new-finding" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-bold mb-4">Añadir Nuevo Hallazgo de Auditoría</h3>
+        <form method="POST" action="{{ url_for('qm.add_audit_finding', audit_id=audit.id) }}">
+            {{ form_new_finding.csrf_token }}
+             {{ form_new_finding.finding_type.label(class="block text-sm font-medium text-gray-700") }}
+            {{ form_new_finding.finding_type(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_new_finding.finding_type.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_new_finding.description.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_new_finding.description(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_new_finding.description.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_new_finding.severity.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_new_finding.severity(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_new_finding.severity.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_new_finding.status.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_new_finding.status(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_new_finding.status.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_new_finding.assigned_to_id.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_new_finding.assigned_to_id(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_new_finding.assigned_to_id.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_new_finding.due_date.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_new_finding.due_date(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_new_finding.due_date.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_new_finding.notes.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_new_finding.notes(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_new_finding.notes.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             <div class="flex justify-end mt-6">
+                <button type="button" id="close-modal-new-finding" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">Cancelar</button>
+                {{ form_new_finding.submit(class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Modal Editar Hallazgo #}
+<div id="modal-edit-finding" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-bold mb-4">Editar Hallazgo de Auditoría</h3>
+        <form method="POST" id="form-edit-finding" action="">
+            {{ form_edit_finding.csrf_token }}
+            {# Campos del formulario, se llenarán con JS #}
+            {{ form_edit_finding.finding_type.label(class="block text-sm font-medium text-gray-700") }}
+            {{ form_edit_finding.finding_type(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_edit_finding.finding_type.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_edit_finding.description.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_edit_finding.description(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_edit_finding.description.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_edit_finding.severity.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_edit_finding.severity(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_edit_finding.severity.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_edit_finding.status.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_edit_finding.status(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_edit_finding.status.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_edit_finding.assigned_to_id.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_edit_finding.assigned_to_id(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_edit_finding.assigned_to_id.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_edit_finding.due_date.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_edit_finding.due_date(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_edit_finding.due_date.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_edit_finding.notes.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_edit_finding.notes(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_edit_finding.notes.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             <div class="flex justify-end mt-6">
+                <button type="button" id="close-modal-edit-finding" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">Cancelar</button>
+                {{ form_edit_finding.submit(class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Modal Cerrar Hallazgo #}
+<div id="modal-close-finding" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-bold mb-4">Cerrar Hallazgo de Auditoría</h3>
+         <form method="POST" id="form-close-finding" action="">
+            {{ form_close_finding.csrf_token }}
+             {# Campos para cierre, se llenarán con JS #}
+            {{ form_close_finding.verified_by_id.label(class="block text-sm font-medium text-gray-700") }}
+            {{ form_close_finding.verified_by_id(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+             {% for error in form_close_finding.verified_by_id.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+            {{ form_close_finding.verification_date.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_close_finding.verification_date(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+             {% for error in form_close_finding.verification_date.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             {{ form_close_finding.notes.label(class="block mt-4 text-sm font-medium text-gray-700") }}
+            {{ form_close_finding.notes(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50") }}
+            {% for error in form_close_finding.notes.errors %}<span class="text-red-500 text-sm">[{{ error }}]</span>{% endfor %}
+
+             <div class="flex justify-end mt-6">
+                <button type="button" id="close-modal-close-finding" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">Cancelar</button>
+                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Cerrar Hallazgo</button>
+            </div>
+         </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Lógica para abrir/cerrar modales con Tailwind CSS
+    function toggleModal(modalId, show) {
+        const modal = document.getElementById(modalId);
+        if (show) {
+            modal.classList.remove('hidden');
+        } else {
+            modal.classList.add('hidden');
+        }
+    }
+
+    // Botones para abrir modales
+    document.getElementById('btn-new-finding').addEventListener('click', () => {
+        toggleModal('modal-new-finding', true);
+    });
+
+    // Botones para cerrar modales
+     document.getElementById('close-modal-new-finding').addEventListener('click', () => {
+        toggleModal('modal-new-finding', false);
+    });
+    // Cerrar modal de edición de finding
+     document.getElementById('close-modal-edit-finding').addEventListener('click', () => {
+        toggleModal('modal-edit-finding', false);
+    });
+    // Cerrar modal de cerrar finding
+     document.getElementById('close-modal-close-finding').addEventListener('click', () => {
+        toggleModal('modal-close-finding', false);
+    });
+
+    // Lógica para abrir el modal de editar Hallazgo y llenar el formulario
+    document.querySelectorAll('.btn-edit-finding').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const findingId = event.target.dataset.id;
+            const findingType = event.target.dataset.finding_type;
+            const description = event.target.dataset.description;
+            const severity = event.target.dataset.severity;
+            const status = event.target.dataset.status;
+            const assignedToId = event.target.dataset.assigned_to_id;
+            const dueDate = event.target.dataset.due_date;
+            const notes = event.target.dataset.notes;
+
+            const form = document.getElementById('form-edit-finding');
+            form.action = "{{ url_for('qm.edit_audit_finding', id=0) }}".replace('/0', '/' + findingId); // Reemplazar el ID placeholder
+
+            form.querySelector('[name="finding_type"]').value = findingType;
+            form.querySelector('[name="description"]').value = description;
+            form.querySelector('[name="severity"]').value = severity;
+            form.querySelector('[name="status"]').value = status;
+            // Para QuerySelectField, necesitas encontrar la opción correcta y seleccionarla
+            const assignedToSelect = form.querySelector('[name="assigned_to_id"]');
+             if (assignedToId) {
+                // Busca la opción cuyo valor (el ID del usuario) coincide
+                for (let i = 0; i < assignedToSelect.options.length; i++) {
+                    if (assignedToSelect.options[i].value == assignedToId) {
+                        assignedToSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+             } else {
+                  assignedToSelect.selectedIndex = 0; // Seleccionar la opción en blanco/por defecto
+             }
+
+            form.querySelector('[name="due_date"]').value = dueDate; // Las fechas de input[type="date"] esperan formato YYYY-MM-DD
+            form.querySelector('[name="notes"]').value = notes;
+
+            toggleModal('modal-edit-finding', true);
+        });
+    });
+
+    // Lógica para abrir el modal de cerrar Hallazgo y llenar el formulario
+     document.querySelectorAll('.btn-close-finding').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const findingId = event.target.dataset.id;
+            const verifiedById = event.target.dataset.verified_by_id;
+            const verificationDate = event.target.dataset.verification_date;
+            const notes = event.target.dataset.notes;
+
+            const form = document.getElementById('form-close-finding');
+            form.action = "{{ url_for('qm.close_audit_finding', id=0) }}".replace('/0', '/' + findingId); // Reemplazar el ID placeholder
+
+            // Llenar campos del formulario de cierre
+             const verifiedBySelect = form.querySelector('[name="verified_by_id"]');
+              if (verifiedById) {
+                for (let i = 0; i < verifiedBySelect.options.length; i++) {
+                    if (verifiedBySelect.options[i].value == verifiedById) {
+                        verifiedBySelect.selectedIndex = i;
+                        break;
+                    }
+                }
+             } else {
+                  verifiedBySelect.selectedIndex = 0; // Seleccionar la opción en blanco/por defecto
+             }
+
+            form.querySelector('[name="verification_date"]').value = verificationDate;
+            form.querySelector('[name="notes"]').value = notes;
+
+            toggleModal('modal-close-finding', true);
+        });
+    });
+
+</script>
+{% endblock %} 

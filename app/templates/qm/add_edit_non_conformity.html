@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800">{{ title }}</h1>
+    <p class="mb-4">Formulario para añadir o editar una no conformidad.</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Datos de la No Conformidad</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ form.csrf_token }}
+                {{ form.id() }} {# Hidden field for ID #}
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        {{ form.severity.label(class="form-label") }}
+                        {{ form.severity(class="form-control") }}
+                        {% for error in form.severity.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                         {# TODO: Campo para seleccionar Inspección/Auditoría relacionada si no se maneja en vista de detalle #}
+                         <label class="form-label">Inspección/Auditoría Relacionada (TODO)</label>
+                         <input type="text" class="form-control" value="Funcionalidad pendiente" disabled>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control", rows="3") }}
+                    {% for error in form.description.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                 <div class="form-group">
+                    {{ form.root_cause.label(class="form-label") }}
+                    {{ form.root_cause(class="form-control", rows="3") }}
+                    {% for error in form.root_cause.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.corrective_action.label(class="form-label") }}
+                    {{ form.corrective_action(class="form-control", rows="3") }}
+                    {% for error in form.corrective_action.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.preventive_action.label(class="form-label") }}
+                    {{ form.preventive_action(class="form-control", rows="3") }}
+                    {% for error in form.preventive_action.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.status.label(class="form-label") }}
+                        {{ form.status(class="form-control") }}
+                        {% for error in form.status.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.assigned_to.label(class="form-label") }}
+                        {{ form.assigned_to(class="form-control") }}
+                        {% for error in form.assigned_to.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.due_date.label(class="form-label") }}
+                         <div class="input-group date" id="due_date_datepicker" data-target-input="nearest">
+                            {{ form.due_date(class="form-control datetimepicker-input", data_target="#due_date_datepicker") }}
+                            <div class="input-group-append" data-target="#due_date_datepicker" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                        </div>
+                        {% for error in form.due_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.completion_date.label(class="form-label") }}
+                         <div class="input-group date" id="completion_date_datepicker" data-target-input="nearest">
+                            {{ form.completion_date(class="form-control datetimepicker-input", data_target="#completion_date_datepicker") }}
+                            <div class="input-group-append" data-target="#completion_date_datepicker" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                        </div>
+                        {% for error in form.completion_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.verified_by.label(class="form-label") }}
+                        {{ form.verified_by(class="form-control") }}
+                        {% for error in form.verified_by.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.verification_date.label(class="form-label") }}
+                         <div class="input-group date" id="verification_date_datepicker" data-target-input="nearest">
+                            {{ form.verification_date(class="form-control datetimepicker-input", data_target="#verification_date_datepicker") }}
+                            <div class="input-group-append" data-target="#verification_date_datepicker" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                        </div>
+                         {% for error in form.verification_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.notes.label(class="form-label") }}
+                    {{ form.notes(class="form-control", rows="3") }}
+                    {% for error in form.notes.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                {{ form.submit(class="btn btn-primary") }}
+                 <a href="{{ url_for('qm.list_non_conformities') }}" class="btn btn-secondary">Cancelar</a>
+
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type="text/javascript">
+    $(function () {
+        // Initialize datepickers
+        $('#due_date_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+        $('#completion_date_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+        $('#verification_date_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+    });
+</script>
+{% endblock %} 

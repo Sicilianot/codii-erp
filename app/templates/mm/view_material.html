@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalles del Material: {{ material.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-3">Detalles del Material: {{ material.name }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Información General
+        </div>
+        <div class="card-body">
+            <p><strong>Código:</strong> {{ material.code }}</p>
+            <p><strong>Descripción:</strong> {{ material.description }}</p>
+            <p><strong>Categoría:</strong> {{ material.category.name if material.category else 'Sin Categoría' }}</p>
+            <p><strong>Unidad de Medida:</strong> {{ material.unit }}</p>
+            <p><strong>Stock Actual:</strong> {{ material.current_stock }}</p>
+            <p><strong>Stock Mínimo:</strong> {{ material.min_stock }}</p>
+            <p><strong>Stock Máximo:</strong> {{ material.max_stock if material.max_stock is not none else 'No Definido' }}</p>
+            <p><strong>Precio Unitario:</strong> {{ material.unit_price }}</p>
+            <p><strong>Ubicación:</strong> {{ material.location }}</p>
+            <p><strong>Especificaciones:</strong> {{ material.specifications }}</p>
+            <p><strong>Activo:</strong> {% if material.is_active %}Sí{% else %}No{% endif %}</p>
+            <p><strong>Creado en:</strong> {{ material.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>Actualizado en:</strong> {{ material.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+
+             <a href="{{ url_for('mm.edit_material', id=material.id) }}" class="btn btn-warning me-2">Editar Material</a>
+             <a href="{{ url_for('mm.list_materials') }}" class="btn btn-secondary">Volver a Materiales</a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Añadir Movimiento de Inventario
+        </div>
+        <div class="card-body">
+             <form method="POST" action="{{ url_for('mm.add_material_movement', material_id=material.id) }}">
+                {{ movement_form.csrf_token }}
+                {{ movement_form.material_id(value=material.id) }} {# Campo oculto para el ID del material #}
+                <div class="mb-3">
+                    {{ movement_form.adjustment_type.label(class="form-label") }}
+                    {{ movement_form.adjustment_type(class="form-select") }}
+                    {% for error in movement_form.adjustment_type.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ movement_form.quantity.label(class="form-label") }}
+                    {{ movement_form.quantity(class="form-control", type="number", step="0.01") }}
+                    {% for error in movement_form.quantity.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+                 <div class="mb-3">
+                    {{ movement_form.notes.label(class="form-label") }}
+                    {{ movement_form.notes(class="form-control") }}
+                    {% for error in movement_form.notes.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-success">Registrar Movimiento</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            Historial de Movimientos
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Cantidad</th>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th>Notas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movement in material.movements %}
+                    <tr>
+                        <td>
+                             {% if movement.type == 'in' %}
+                                <span class="badge bg-success">Entrada</span>
+                            {% elif movement.type == 'out' %}
+                                <span class="badge bg-danger">Salida</span>
+                            {% else %}
+                                {{ movement.type }}
+                            {% endif %}
+                        </td>
+                        <td>{{ movement.quantity }}</td>
+                         <td>{{ movement.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ movement.user.username if movement.user else 'N/A' }}</td>
+                        <td>{{ movement.notes }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% if not material.movements %}
+                    <tr>
+                        <td colspan="5">No hay movimientos registrados para este material.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %} 

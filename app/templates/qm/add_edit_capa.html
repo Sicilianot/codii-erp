@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800">{{ title }}</h1>
+    <p class="mb-4">Formulario para añadir o editar una Acción Correctiva/Preventiva (CAPA).</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Datos de la CAPA</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ form.csrf_token }}
+                {{ form.id() }} {# Hidden field for ID #}
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        {{ form.capa_type.label(class="form-label") }}
+                        {{ form.capa_type(class="form-control") }}
+                        {% for error in form.capa_type.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                     <div class="form-group col-md-6">
+                         {# TODO: Campo para seleccionar Fuente (No Conformidad, Hallazgo de Auditoría, etc.) #}
+                        {{ form.source_type.label(class="form-label") }}
+                        {{ form.source_type(class="form-control") }}
+                        {% for error in form.source_type.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                         {# TODO: Campo para source_id - podría ser un QuerySelectField condicional o manejarse con JS #}
+                          <label class="form-label">ID de Fuente (TODO: Implementar selección dinámica)</label>
+                         {{ form.source_id(class="form-control") }}
+                          {% for error in form.source_id.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                 <div class="form-group">
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control", rows="3") }}
+                    {% for error in form.description.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                 <div class="form-group">
+                    {{ form.root_cause.label(class="form-label") }}
+                    {{ form.root_cause(class="form-control", rows="3") }}
+                    {% for error in form.root_cause.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                 <div class="form-group">
+                    {{ form.proposed_action.label(class="form-label") }}
+                    {{ form.proposed_action(class="form-control", rows="3") }}
+                    {% for error in form.proposed_action.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                 <div class="form-group">
+                    {{ form.implemented_action.label(class="form-label") }}
+                    {{ form.implemented_action(class="form-control", rows="3") }}
+                    {% for error in form.implemented_action.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.status.label(class="form-label") }}
+                        {{ form.status(class="form-control") }}
+                        {% for error in form.status.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.assigned_to.label(class="form-label") }}
+                        {{ form.assigned_to(class="form-control") }}
+                        {% for error in form.assigned_to.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                 <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.due_date.label(class="form-label") }}
+                         <div class="input-group date" id="capa_due_date_datepicker" data-target-input="nearest">
+                            {{ form.due_date(class="form-control datetimepicker-input", data_target="#capa_due_date_datepicker") }}
+                            <div class="input-group-append" data-target="#capa_due_date_datepicker" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                        </div>
+                        {% for error in form.due_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.completion_date.label(class="form-label") }}
+                         <div class="input-group date" id="capa_completion_date_datepicker" data-target-input="nearest">
+                            {{ form.completion_date(class="form-control datetimepicker-input", data_target="#capa_completion_date_datepicker") }}
+                            <div class="input-group-append" data-target="#capa_completion_date_datepicker" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                        </div>
+                        {% for error in form.completion_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.verification_method.label(class="form-label") }}
+                    {{ form.verification_method(class="form-control", rows="3") }}
+                    {% for error in form.verification_method.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                 <div class="form-row">
+                     <div class="form-group col-md-6">
+                        {{ form.verified_by.label(class="form-label") }}
+                        {{ form.verified_by(class="form-control") }}
+                        {% for error in form.verified_by.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.verification_date.label(class="form-label") }}
+                         <div class="input-group date" id="capa_verification_date_datepicker" data-target-input="nearest">
+                            {{ form.verification_date(class="form-control datetimepicker-input", data_target="#capa_verification_date_datepicker") }}
+                            <div class="input-group-append" data-target="#capa_verification_date_datepicker" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                            </div>
+                        </div>
+                         {% for error in form.verification_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                 <div class="form-group">
+                    {{ form.effectiveness_status.label(class="form-label") }}
+                    {{ form.effectiveness_status(class="form-control") }}
+                    {% for error in form.effectiveness_status.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.notes.label(class="form-label") }}
+                    {{ form.notes(class="form-control", rows="3") }}
+                    {% for error in form.notes.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+
+                {{ form.submit(class="btn btn-primary") }}
+                 <a href="{{ url_for('qm.list_capas') }}" class="btn btn-secondary">Cancelar</a>
+
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type="text/javascript">
+    $(function () {
+        // Initialize datepickers
+        $('#capa_due_date_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+        $('#capa_completion_date_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+        $('#capa_verification_date_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Editar' if product else 'Nuevo' }} Producto{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>{{ 'Editar' if product else 'Nuevo' }} Producto</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('pp.products') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <form method="POST" class="needs-validation" novalidate>
+        <div class="row">
+            <!-- Información Básica -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Información Básica</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Código</label>
+                            <input type="text" class="form-control" name="code" value="{{ product.code if product else '' }}" required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese un código.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" name="name" value="{{ product.name if product else '' }}" required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese un nombre.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" name="description" rows="3">{{ product.description if product else '' }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Categoría</label>
+                            <select class="form-select" name="category_id" required>
+                                <option value="">Seleccione una categoría</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" 
+                                        {% if product and product.category_id == category.id %}selected{% endif %}
+                                        style="color: {{ category.color }}">
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione una categoría.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Especificaciones Técnicas -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Especificaciones Técnicas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Unidad de Medida</label>
+                            <select class="form-select" name="unit" required>
+                                <option value="">Seleccione una unidad</option>
+                                <option value="unidad" {% if product and product.unit == 'unidad' %}selected{% endif %}>Unidad</option>
+                                <option value="kg" {% if product and product.unit == 'kg' %}selected{% endif %}>Kilogramo (kg)</option>
+                                <option value="g" {% if product and product.unit == 'g' %}selected{% endif %}>Gramo (g)</option>
+                                <option value="l" {% if product and product.unit == 'l' %}selected{% endif %}>Litro (l)</option>
+                                <option value="ml" {% if product and product.unit == 'ml' %}selected{% endif %}>Mililitro (ml)</option>
+                                <option value="m" {% if product and product.unit == 'm' %}selected{% endif %}>Metro (m)</option>
+                                <option value="cm" {% if product and product.unit == 'cm' %}selected{% endif %}>Centímetro (cm)</option>
+                                <option value="m2" {% if product and product.unit == 'm2' %}selected{% endif %}>Metro cuadrado (m²)</option>
+                                <option value="m3" {% if product and product.unit == 'm3' %}selected{% endif %}>Metro cúbico (m³)</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione una unidad de medida.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tiempo Estándar (minutos)</label>
+                            <input type="number" class="form-control" name="standard_time" 
+                                   value="{{ product.standard_time if product else '' }}" 
+                                   min="0" step="0.01">
+                            <div class="form-text">
+                                Tiempo estimado para producir una unidad.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_active" 
+                                       id="is_active" {% if not product or product.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">Producto Activo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Materiales -->
+            <div class="col-12">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Materiales Requeridos</h5>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+                            <i class="fas fa-plus"></i> Agregar Material
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table" id="materialsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Cantidad</th>
+                                        <th>Unidad</th>
+                                        <th>Notas</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for material in product.materials if product %}
+                                    <tr>
+                                        <td>{{ material.material.name }}</td>
+                                        <td>{{ material.quantity }}</td>
+                                        <td>{{ material.material.unit }}</td>
+                                        <td>{{ material.notes or '-' }}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-danger" onclick="removeMaterial(this)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12 text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar Producto
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Modal para Agregar Material -->
+<div class="modal fade" id="addMaterialModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Agregar Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Material</label>
+                    <select class="form-select" id="materialSelect" required>
+                        <option value="">Seleccione un material</option>
+                        {% for material in materials %}
+                        <option value="{{ material.id }}" 
+                                data-unit="{{ material.unit }}"
+                                data-name="{{ material.name }}">
+                            {{ material.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Cantidad</label>
+                    <input type="number" class="form-control" id="materialQuantity" min="0.01" step="0.01" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notas</label>
+                    <textarea class="form-control" id="materialNotes" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="addMaterial()">Agregar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // Validación del formulario
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+
+    // Gestión de materiales
+    function addMaterial() {
+        const select = document.getElementById('materialSelect');
+        const option = select.options[select.selectedIndex];
+        const quantity = document.getElementById('materialQuantity').value;
+        const notes = document.getElementById('materialNotes').value;
+        
+        if (!select.value || !quantity) {
+            alert('Por favor complete todos los campos requeridos.');
+            return;
+        }
+
+        const table = document.getElementById('materialsTable').getElementsByTagName('tbody')[0];
+        const row = table.insertRow();
+        
+        row.innerHTML = `
+            <td>${option.dataset.name}</td>
+            <td>${quantity}</td>
+            <td>${option.dataset.unit}</td>
+            <td>${notes || '-'}</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeMaterial(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+
+        // Agregar campos ocultos para el formulario
+        const materialInput = document.createElement('input');
+        materialInput.type = 'hidden';
+        materialInput.name = 'materials[]';
+        materialInput.value = select.value;
+        row.appendChild(materialInput);
+
+        const quantityInput = document.createElement('input');
+        quantityInput.type = 'hidden';
+        quantityInput.name = 'quantities[]';
+        quantityInput.value = quantity;
+        row.appendChild(quantityInput);
+
+        const notesInput = document.createElement('input');
+        notesInput.type = 'hidden';
+        notesInput.name = 'notes[]';
+        notesInput.value = notes;
+        row.appendChild(notesInput);
+
+        // Limpiar el modal
+        select.value = '';
+        document.getElementById('materialQuantity').value = '';
+        document.getElementById('materialNotes').value = '';
+        
+        // Cerrar el modal
+        bootstrap.Modal.getInstance(document.getElementById('addMaterialModal')).hide();
+    }
+
+    function removeMaterial(button) {
+        const row = button.closest('tr');
+        row.remove();
+    }
+</script>
+{% endblock %}
+{% endblock %} 

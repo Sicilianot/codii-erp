@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>Detalles de CAPA #{{ capa.capa_number }}</h2>
+
+    {# TODO: Display CAPA details #}
+    <div class="card mb-3">
+        <div class="card-header">
+            Información General
+        </div>
+        <div class="card-body">
+            <p><strong>Número de CAPA:</strong> {{ capa.capa_number }}</p>
+            <p><strong>Tipo:</strong> {{ capa.capa_type }}</p>
+            <p><strong>Estado:</strong> {{ capa.status }}</p>
+            <p><strong>Fecha de Creación:</strong> {{ capa.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>Creado Por:</strong> {{ capa.creator.username if capa.creator else 'N/A' }}</p>
+            <p><strong>Última Actualización:</strong> {{ capa.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            Detalle del Problema/Hallazgo
+        </div>
+        <div class="card-body">
+            <p><strong>Fuente:</strong> {{ capa.source_type or 'N/A' }} {% if capa.source_id %}(ID: {{ capa.source_id }}){% endif %}</p>
+            <p><strong>Descripción:</strong> {{ capa.description }}</p>
+            <p><strong>Causa Raíz:</strong> {{ capa.root_cause or 'N/A' }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            Acciones
+        </div>
+        <div class="card-body">
+            <p><strong>Acción Propuesta:</strong> {{ capa.proposed_action }}</p>
+            <p><strong>Acción Implementada:</strong> {{ capa.implemented_action or 'N/A' }}</p>
+            <p><strong>Asignado A:</strong> {{ capa.assigned_to.username if capa.assigned_to else 'Sin Asignar' }}</p>
+            <p><strong>Fecha Límite:</strong> {{ capa.due_date.strftime('%Y-%m-%d') if capa.due_date else 'N/A' }}</p>
+            <p><strong>Fecha de Implementación:</strong> {{ capa.completion_date.strftime('%Y-%m-%d') if capa.completion_date else 'N/A' }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            Verificación
+        </div>
+        <div class="card-body">
+            <p><strong>Método de Verificación:</strong> {{ capa.verification_method or 'N/A' }}</p>
+            <p><strong>Verificada Por:</strong> {{ capa.verifier.username if capa.verifier else 'N/A' }}</p>
+             <p><strong>Fecha de Verificación:</strong> {{ capa.verification_date.strftime('%Y-%m-%d') if capa.verification_date else 'N/A' }}</p>
+             <p><strong>Efectividad:</strong> {{ capa.effectiveness_status or 'N/A' }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            Notas
+        </div>
+        <div class="card-body">
+            <p>{{ capa.notes or 'Sin notas.' }}</p>
+        </div>
+    </div>
+
+    {# TODO: Add buttons for Edit and Close CAPA #}
+    <a href="{{ url_for('qm.edit_capa', id=capa.id) }}" class="btn btn-primary">Editar CAPA</a>
+    {# TODO: Add button/modal for closing CAPA #}
+    {% if capa.status != 'closed' %}
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#closeCapaModal">Cerrar CAPA</button>
+    {% endif %}
+
+    <a href="{{ url_for('qm.list_capas') }}" class="btn btn-secondary">Volver a la lista</a>
+
+    {# TODO: Add modal for closing CAPA #}
+    <div class="modal fade" id="closeCapaModal" tabindex="-1" aria-labelledby="closeCapaModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="closeCapaModalLabel">Cerrar CAPA #{{ capa.capa_number }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form method="POST" action="{{ url_for('qm.close_capa', id=capa.id) }}">
+              {{ form_close_capa.csrf_token }}
+              <div class="modal-body">
+                <p>Confirma que deseas cerrar esta CAPA. Puedes añadir información de verificación.</p>
+                 <div class="mb-3">
+                    {{ form_close_capa.verified_by_id.label(class="form-label") }}
+                    {{ form_close_capa.verified_by_id(class="form-control") }}
+                    {% for error in form_close_capa.verified_by_id.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ form_close_capa.verification_date.label(class="form-label") }}
+                    {{ form_close_capa.verification_date(class="form-control") }}
+                    {% for error in form_close_capa.verification_date.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+                 <div class="mb-3">
+                    {{ form_close_capa.notes.label(class="form-label") }} {# Reutilizamos el campo notes del formulario para notas de cierre #}
+                    {{ form_close_capa.notes(class="form-control", rows=3) }}
+                    {% for error in form_close_capa.notes.errors %}
+                        <span class="text-danger">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+                 {# TODO: Add effectiveness status field to close modal if needed #}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-success">Cerrar CAPA</button>
+              </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+
+{% endblock %} 

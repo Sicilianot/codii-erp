@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-2xl font-semibold mb-6">Detalle de Documento: {{ document.document_code }}</h1>
+
+    {# Información general del documento #}
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Información del Documento</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <p class="text-gray-600">Código de Documento:</p>
+                <p class="font-medium">{{ document.document_code }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Título:</p>
+                <p class="font-medium">{{ document.title }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Versión:</p>
+                <p class="font-medium">{{ document.version }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Tipo de Documento:</p>
+                <p class="font-medium">{{ document.document_type }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Fecha de Emisión:</p>
+                <p class="font-medium">{{ document.issue_date.strftime('%Y-%m-%d') if document.issue_date else 'N/A' }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Fecha de Revisión:</p>
+                <p class="font-medium">{{ document.revision_date.strftime('%Y-%m-%d') if document.revision_date else 'N/A' }}</p>
+            </div>
+             <div>
+                <p class="text-gray-600">Estado:</p>
+                <p class="font-medium">{{ document.status }}</p>
+            </div>
+             <div class="md:col-span-2">
+                <p class="text-gray-600">Notas:</p>
+                <p class="font-medium">{{ document.notes or 'Sin notas' }}</p>
+            </div>
+             <div class="md:col-span-2">
+                <p class="text-gray-600">Archivo Asociado:</p>
+                <p class="font-medium">
+                    {% if document.file_path %}
+                         <a href="{{ url_for('qm.download_document', id=document.id) }}" class="text-purple-600 hover:underline">Descargar Archivo</a>
+                    {% else %}
+                        No hay archivo asociado.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+         {# Acciones principales del documento #}
+        <div class="mt-6 flex space-x-4">
+             {% if document.status != 'obsolete' %}
+                <a href="{{ url_for('qm.edit_document', id=document.id) }}" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Editar Documento</a>
+                 {# Botón para Marcar como Obsoleto (usar formulario POST) #}
+                <form action="{{ url_for('qm.make_document_obsolete', id=document.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de marcar este documento como obsoleto?');">
+                    <button type="submit" class="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">Marcar como Obsoleto</button>
+                </form>
+            {% endif %}
+
+             {# Botón para Eliminar (usar formulario POST) #}
+             <form action="{{ url_for('qm.delete_document', id=document.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este documento? Esta acción no se puede deshacer y eliminará el archivo asociado.');">
+                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Eliminar Documento</button>
+            </form>
+        </div>
+    </div>
+
+    {# Botón para volver #}
+     <div class="mt-6">
+        <a href="{{ url_for('qm.list_documents') }}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Volver a la Lista de Documentos</a>
+     </div>
+
+</div>
+{% endblock %} 

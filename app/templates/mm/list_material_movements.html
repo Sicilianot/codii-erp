@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Movimientos de Material{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-3">Movimientos de Materiales</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Material</th>
+                <th>Tipo de Ajuste</th>
+                <th>Cantidad</th>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Notas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movement in movements %}
+            <tr>
+                <td>
+                    {% if movement.material %}
+                        {{ movement.material.name }}
+                    {% else %}
+                        Material Eliminado
+                    {% endif %}
+                </td>
+                <td>
+                    {% if movement.type == 'in' %}
+                        <span class="badge bg-success">Entrada</span>
+                    {% elif movement.type == 'out' %}
+                        <span class="badge bg-danger">Salida</span>
+                    {% else %}
+                        {{ movement.type }}
+                    {% endif %}
+                </td>
+                <td>{{ movement.quantity }}</td>
+                <td>{{ movement.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if movement.user %}
+                        {{ movement.user.username }}
+                    {% else %}
+                        Usuario Desconocido
+                    {% endif %}
+                </td>
+                <td>{{ movement.notes }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Categorías de Producto{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Categorías de Producto</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <a href="{{ url_for('pp.add_product_category') }}" class="btn btn-primary mb-3">Añadir Nueva Categoría</a>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Color</th>
+                <th>Activa</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for category in categories %}
+            <tr>
+                <td>{{ category.id }}</td>
+                <td>{{ category.name }}</td>
+                <td>{{ category.description if category.description else '-' }}</td>
+                 <td><span class="badge" style="background-color: {{ category.color }};">{{ category.color }}</span></td>
+                <td>
+                    {% if category.is_active %}
+                        <span class="badge bg-success">Sí</span>
+                    {% else %}
+                        <span class="badge bg-danger">No</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('pp.edit_product_category', id=category.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="{{ url_for('pp.delete_product_category', id=category.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro de eliminar esta categoría?');">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 

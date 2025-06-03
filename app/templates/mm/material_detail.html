@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Detalles de Material - ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Detalles de Material</h1>
+        <div>
+            <a href="{{ url_for('mm.inventory') }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left me-2"></i>
+                Volver
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#adjustStockModal">
+                <i class="fas fa-boxes me-2"></i>
+                Ajustar Stock
+            </button>
+        </div>
+    </div>
+
+    <!-- Información del Material -->
+    <div class="row">
+        <!-- Detalles Principales -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        {% if material.image %}
+                        <img src="{{ material.image }}" alt="{{ material.name }}" 
+                             class="rounded me-4" style="width: 100px; height: 100px; object-fit: cover;">
+                        {% else %}
+                        <div class="rounded me-4 d-flex align-items-center justify-content-center bg-light" 
+                             style="width: 100px; height: 100px;">
+                            <i class="fas fa-box fa-3x text-muted"></i>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <h2 class="h4 mb-1">{{ material.name }}</h2>
+                            <p class="text-muted mb-2">Código: {{ material.code }}</p>
+                            <span class="badge" style="background-color: {{ material.category.color }}">
+                                {{ material.category.name }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="mb-3">Información General</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 150px;">Descripción:</th>
+                                    <td>{{ material.description or 'Sin descripción' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Unidad:</th>
+                                    <td>{{ material.unit }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Ubicación:</th>
+                                    <td>{{ material.location or 'No especificada' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Estado:</th>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if material.is_active else 'danger' }}">
+                                            {{ 'Activo' if material.is_active else 'Inactivo' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="mb-3">Información de Stock</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 150px;">Stock Actual:</th>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                {% set stock_percentage = (material.current_stock / material.max_stock * 100) if material.max_stock else 0 %}
+                                                <div class="progress-bar bg-{{ 'danger' if material.current_stock <= material.min_stock else 'success' }}" 
+                                                     role="progressbar" 
+                                                     style="width: {{ stock_percentage }}%">
+                                                </div>
+                                            </div>
+                                            <span class="fw-bold {% if material.current_stock <= material.min_stock %}text-danger{% endif %}">
+                                                {{ material.current_stock }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Stock Mínimo:</th>
+                                    <td>{{ material.min_stock }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Stock Máximo:</th>
+                                    <td>{{ material.max_stock or 'No especificado' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Precio Unitario:</th>
+                                    <td>{{ material.unit_price|format_currency }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Valor Total:</th>
+                                    <td>{{ material.total_value|format_currency }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumen de Movimientos -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Últimos Movimientos</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for movement in movements %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-{{ 'success' if movement.type == 'in' else 'danger' }} me-2">
+                                        {{ 'Entrada' if movement.type == 'in' else 'Salida' }}
+                                    </span>
+                                    <small class="text-muted">{{ movement.date.strftime('%d/%m/%Y %H:%M') }}</small>
+                                </div>
+                                <span class="fw-bold {% if movement.type == 'in' %}text-success{% else %}text-danger{% endif %}">
+                                    {{ '+' if movement.type == 'in' else '-' }}{{ movement.quantity }}
+                                </span>
+                            </div>
+                            {% if movement.notes %}
+                            <small class="text-muted d-block mt-1">{{ movement.notes }}</small>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="list-group-item text-center text-muted">
+                            No hay movimientos registrados
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('mm.material_movements', id=material.id) }}" class="btn btn-link btn-sm p-0">
+                        Ver historial completo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Ajuste de Stock -->
+<div class="modal fade" id="adjustStockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('mm.adjust_stock') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ajustar Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {{ adjust_form.csrf_token }}
+                    {{ adjust_form.material_id(value=material.id) }}
+                    
+                    <div class="mb-3">
+                        {{ adjust_form.adjustment_type.label(class="form-label") }}
+                        {{ adjust_form.adjustment_type(class="form-select") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ adjust_form.quantity.label(class="form-label") }}
+                        {{ adjust_form.quantity(class="form-control", type="number", step="0.01", min="0.01") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ adjust_form.notes.label(class="form-label") }}
+                        {{ adjust_form.notes(class="form-control", rows="3") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Ajuste</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

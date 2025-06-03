@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>{{ title }}</h2>
+    
+    {# TODO: Add filters and search form #}
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <form method="GET" action="{{ url_for('qm.list_capas') }}">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Buscar CAPAs..." name="search" value="{{ search or '' }}">
+                    <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+                </div>
+            </form>
+        </div>
+        {# TODO: Add filter dropdowns for type and status #}
+        <div class="col-md-3">
+             {# Example: #}
+             {#
+             <select class="form-select" onchange="this.form.submit()" name="type">
+                 <option value="">-- Tipo --</option>
+                 <option value="corrective" {% if type == 'corrective' %}selected{% endif %}>Correctiva</option>
+                 <option value="preventive" {% if type == 'preventive' %}selected{% endif %}>Preventiva</option>
+             </select>
+             #}
+        </div>
+         <div class="col-md-3">
+             {# Example: #}
+             {#
+             <select class="form-select" onchange="this.form.submit()" name="status">
+                 <option value="">-- Estado --</option>
+                 <option value="open" {% if status == 'open' %}selected{% endif %}>Abierta</option>
+                 <option value="closed" {% if status == 'closed' %}selected{% endif %}>Cerrada</option>
+             </select>
+             #}
+        </div>
+    </div>
+
+    <a href="{{ url_for('qm.new_capa') }}" class="btn btn-primary mb-3">Crear Nueva CAPA</a>
+
+    {# TODO: Display list of CAPAs in a table #}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Número</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th>Fuente</th>
+                <th>Estado</th>
+                <th>Asignado A</th>
+                <th>Fecha Límite</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for capa in capas.items %}
+            <tr>
+                <td><a href="{{ url_for('qm.capa_detail', id=capa.id) }}">{{ capa.capa_number }}</a></td>
+                <td>{{ capa.capa_type }}</td>
+                <td>{{ capa.description | truncate(50) }}</td> {# Mostrar solo una parte de la descripción #}
+                <td>{{ capa.source_type or 'N/A' }} {% if capa.source_id %}(ID: {{ capa.source_id }}){% endif %}</td> {# Mostrar tipo y ID de fuente #}
+                <td>{{ capa.status }}</td>
+                <td>{{ capa.assigned_to.username if capa.assigned_to else 'Sin Asignar' }}</td> {# Mostrar nombre de usuario asignado #}
+                <td>{{ capa.due_date.strftime('%Y-%m-%d') if capa.due_date else 'N/A' }}</td>
+                <td>
+                    <a href="{{ url_for('qm.edit_capa', id=capa.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+                    {# TODO: Add delete button (requires JS for confirmation or a separate form) #}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {# TODO: Add pagination controls #}
+     <nav aria-label="...">
+        <ul class="pagination">
+            <li class="page-item {% if not capas.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('qm.list_capas', page=capas.prev_num, search=search, type=type, status=status) }}">Anterior</a>
+            </li>
+            {% for page_num in capas.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if capas.page == page_num %}
+                        <li class="page-item active"><a class="page-link" href="#">{{ page_num }}</a></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('qm.list_capas', page=page_num, search=search, type=type, status=status) }}">{{ page_num }}</a></li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled"><a class="page-link" href="#">...</a></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not capas.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('qm.list_capas', page=capas.next_num, search=search, type=type, status=status) }}">Siguiente</a>
+            </li>
+        </ul>
+    </nav>
+
+{% endblock %} 

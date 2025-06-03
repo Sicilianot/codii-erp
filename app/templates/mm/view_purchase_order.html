@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle Orden de Compra #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado y Acciones -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Detalle Orden de Compra #{{ order.order_number }}</h2>
+            <p class="text-muted">
+                Creada el {{ order.order_date.strftime('%d/%m/%Y') }} con Proveedor: {{ order.supplier.name if order.supplier else 'N/A' }}
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('mm.list_purchase_orders') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a la Lista
+            </a>
+             {# Solo permitir editar si el estado es 'pending' #}
+            {% if order.status == 'pending' %}
+            <a href="{{ url_for('mm.edit_purchase_order', id=order.id) }}" class="btn btn-primary" title="Editar Orden de Compra">
+                <i class="fas fa-edit"></i> Editar
+            </a>
+            {% endif %}
+            {# TODO: Añadir botón para Imprimir OC #}
+             {# TODO: Añadir botón para Registrar Recepción (movimiento de inventario) si el estado es 'approved' #}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información General -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">Información General</div>
+                <div class="card-body">
+                    <p><strong>Número de Orden:</strong> {{ order.order_number }}</p>
+                    <p><strong>Proveedor:</strong> {{ order.supplier.name if order.supplier else 'N/A' }}</p>
+                    <p><strong>Fecha de la Orden:</strong> {{ order.order_date.strftime('%d/%m/%Y') if order.order_date else 'N/A' }}</p>
+                    <p><strong>Estado:</strong>
+                        {% if order.status == 'pending' %}
+                        <span class="badge bg-warning">Pendiente</span>
+                        {% elif order.status == 'approved' %}
+                        <span class="badge bg-success">Aprobada</span>
+                        {% elif order.status == 'rejected' %}
+                        <span class="badge bg-danger">Rechazada</span>
+                         {% elif order.status == 'cancelled' %}
+                        <span class="badge bg-secondary">Cancelada</span>
+                        {% else %}
+                        <span class="badge bg-info">Completada</span>
+                        {% endif %}
+                    </p>
+                     <p><strong>Monto Total:</strong> {{ "{:,.2f}".format(order.total_amount) if order.total_amount is not none else "0.00" }}</p>
+                    <p><strong>Notas:</strong> {{ order.notes or 'Sin notas' }}</p>
+                </div>
+            </div>
+        </div>
+
+         <!-- Ítems de la Orden de Compra -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                 <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Ítems de la Orden</h5>
+                     {# Solo permitir añadir ítems si el estado es 'pending' #}
+                     {% if order.status == 'pending' %}
+                         <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                            <i class="fas fa-plus"></i> Añadir Ítem
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                     <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio Unitario</th>
+                                    <th>Subtotal</th>
+                                    {% if order.status == 'pending' %}<th>Acciones</th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if order.items %}
+                                    {% for item in order.items %}
+                                    <tr>
+                                        <td>{{ item.material.name if item.material else 'Material Eliminado' }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>{{ "{:,.2f}".format(item.unit_price) }}</td>
+                                        <td>{{ "{:,.2f}".format(item.subtotal) }}</td>
+                                        {% if order.status == 'pending' %}
+                                        <td>
+                                            <div class="btn-group">
+                                                {# Botón/modal para editar ítem #}
+                                                <button type="button" class="btn btn-sm btn-primary edit-item-btn" data-bs-toggle="modal" data-bs-target="#editItemModal{{ item.id }}" title="Editar Ítem">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                 {# Formulario para eliminar ítem #}
+                                                <form action="{{ url_for('mm.delete_purchase_order_item', item_id=item.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este ítem de la orden de compra?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Eliminar Ítem">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+
+                                    <!-- Modal para Editar Ítem de Orden de Compra -->
+                                    <div class="modal fade" id="editItemModal{{ item.id }}" tabindex="-1" aria-labelledby="editItemModalLabel{{ item.id }}" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="editItemModalLabel{{ item.id }}">Editar Ítem de Orden #{{ order.order_number }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                {# El action del formulario apunta a la ruta de backend para editar ítems #}
+                                                <form action="{{ url_for('mm.edit_purchase_order_item', item_id=item.id) }}" method="POST">
+                                                     <div class="modal-body">
+                                                        {# Necesitamos pasar el formulario de edición específico para este ítem desde la ruta #}
+                                                        {# TODO: Pasar form_edit_item (instancia de PurchaseOrderItemForm precargada con datos del item) desde la ruta #}
+                                                        {# Por ahora, usamos el form de añadir para la estructura, pero esto DEBE ser reemplazado #}
+                                                        {# con una instancia de formulario precargada para editar #}
+
+                                                         {# Temporalmente usando add_item_form para la estructura #}
+                                                         {# Esto debe ser reemplazado por form_edit_item si se pasa desde la ruta #}
+                                                        {{ add_item_form.csrf_token }}
+                                                        <div class="mb-3">
+                                                            {{ add_item_form.material.label(class="form-label") }}
+                                                            {# Para edición, QuerySelectField necesita el valor inicial configurado en el backend (obj=item) #}
+                                                            {{ add_item_form.material(class="form-select", required=true) }}
+                                                            {% if add_item_form.material.errors %}
+                                                                <div class="text-danger">{% for error in add_item_form.material.errors %}{{ error }}{% endfor %}</div>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            {{ add_item_form.quantity.label(class="form-label") }}
+                                                            {{ add_item_form.quantity(class="form-control", type="number", min="0.01", step="any", required=true) }}
+                                                             {% if add_item_form.quantity.errors %}
+                                                                <div class="text-danger">{% for error in add_item_form.quantity.errors %}{{ error }}{% endfor %}</div>
+                                                            {% endif %}
+                                                        </div>
+                                                         <div class="mb-3">
+                                                            {{ add_item_form.unit_price.label(class="form-label") }}
+                                                            {{ add_item_form.unit_price(class="form-control", type="number", min="0", step="0.01", required=true) }}
+                                                             {% if add_item_form.unit_price.errors %}
+                                                                <div class="text-danger">{% for error in add_item_form.unit_price.errors %}{{ error }}{% endfor %}</div>
+                                                            {% endif %}
+                                                        </div>
+                                                         {# Campo oculto para el ID del ítem a editar #}
+                                                         {{ add_item_form.id() }} {# Asumiendo que el formulario de ítem tiene un campo ID #}
+                                                     </div>
+                                                     <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                                     </div>
+                                                 </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="{% if order.status == 'pending' %}5{% else %}4{% endif %}" class="text-center">No hay ítems en esta orden de compra.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                             <tfoot>
+                                <tr>
+                                    <td colspan="{% if order.status == 'pending' %}3{% else %}2{% endif %}" class="text-end"><strong>Total:</strong></td>
+                                    <td><strong>{{ "{:,.2f}".format(order.total_amount) if order.total_amount is not none else "0.00" }}</strong></td>
+                                     {% if order.status == 'pending' %}<td></td>{% endif %}
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+     <!-- Modal para Añadir Nuevo Ítem de Orden de Compra -->
+     {# La definición global del modal Añadir Ítem ya está abajo #}
+
+</div>
+
+<!-- Modal para Añadir Nuevo Ítem de Orden de Compra - Definición Global -->
+{# Usamos este para el botón de "Añadir Ítem" #}
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addItemModalLabel">Añadir Nuevo Ítem a la Orden #{{ order.order_number }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            {# El action del formulario apunta a la ruta de backend para añadir ítems #}
+            <form action="{{ url_for('mm.add_purchase_order_item', order_id=order.id) }}" method="POST">
+                 <div class="modal-body">
+                    {{ add_item_form.csrf_token }}
+                    <div class="mb-3">
+                        {{ add_item_form.material.label(class="form-label") }}
+                        {{ add_item_form.material(class="form-select", required=true) }}
+                        {% if add_item_form.material.errors %}
+                            <div class="text-danger">{% for error in add_item_form.material.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ add_item_form.quantity.label(class="form-label") }}
+                        {{ add_item_form.quantity(class="form-control", type="number", min="0.01", step="any", required=true) }}
+                         {% if add_item_form.quantity.errors %}
+                            <div class="text-danger">{% for error in add_item_form.quantity.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                     <div class="mb-3">
+                        {{ add_item_form.unit_price.label(class="form-label") }}
+                        {{ add_item_form.unit_price(class="form-control", type="number", min="0", step="0.01", required=true) }}
+                         {% if add_item_form.unit_price.errors %}
+                            <div class="text-danger">{% for error in add_item_form.unit_price.errors %}{{ error }}{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                 </div>
+                 <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Añadir Ítem</button>
+                 </div>
+             </form>
+        </div>
+    </div>
+</div>
+
+{# No necesitamos un modal de Edición global, ya que cada ítem tiene su propio modal en el bucle #}
+
+{% block scripts %}
+<script>
+    // Inicializar Select2 para los selectores de Material en los modales si se usa Select2
+    // Es importante inicializar Select2 para cada modal individualmente o usar delegación
+    // $(document).ready(function() {
+    //     // Modal Añadir Ítem
+    //     $('#addItemModal select[name="material"]').select2({
+    //         dropdownParent: $('#addItemModal')
+    //     });
+    //
+    //     // Modales Editar Ítem (dentro del bucle)
+    //     {% for item in order.items %}
+    //     $('#editItemModal{{ item.id }} select[name="material"]').select2({
+    //          dropdownParent: $('#editItemModal{{ item.id }}')
+    //     });
+    //     {% endfor %}
+    // });
+
+    // Tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
+{% endblock %}
+
+{% endblock %} 

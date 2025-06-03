@@ -1,0 +1,436 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Auditoría{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <h1 class="h3 mb-2 text-gray-800">Auditoría #{{ audit.audit_number or audit.id }}</h1>
+    <p class="mb-4">Detalles de la auditoría de calidad.</p>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Información General</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Número:</strong> {{ audit.audit_number or 'N/A' }}</p>
+                    <p><strong>Tipo:</strong> {{ audit.audit_type | replace('_', ' ') | title }}</p>
+                    <p><strong>Estado:</strong> {{ audit.status | title }}</p>
+                    <p><strong>Fecha Planificada:</strong> {{ audit.planned_date.strftime('%Y-%m-%d') if audit.planned_date else 'N/A' }}</p>
+                    <p><strong>Fecha Ejecución:</strong> {{ audit.executed_date.strftime('%Y-%m-%d') if audit.executed_date else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Auditor Líder:</strong> {{ audit.lead_auditor.username if audit.lead_auditor else 'N/A' }}</p>
+                    <p><strong>Área Auditada:</strong> {{ audit.audited_area or 'N/A' }}</p>
+                     <p><strong>Fecha Informe:</strong> {{ audit.report_date.strftime('%Y-%m-%d') if audit.report_date else 'N/A' }}</p>
+                    <p><strong>Creado por:</strong> {{ audit.creator.username if audit.creator else 'N/A' }}</p>
+                    <p><strong>Fecha de Creación:</strong> {{ audit.created_at.strftime('%Y-%m-%d %H:%M') if audit.created_at else 'N/A' }}</p>
+                </div>
+            </div>
+            <p><strong>Alcance:</strong> {{ audit.scope or 'N/A' }}</p>
+            <p><strong>Notas:</strong> {{ audit.notes or 'N/A' }}</p>
+
+            <a href="{{ url_for('qm.edit_audit', id=audit.id) }}" class="btn btn-warning btn-sm mt-3">Editar Auditoría</a>
+             <button type="button" class="btn btn-danger btn-sm mt-3" data-toggle="modal" data-target="#deleteAuditModal{{ audit.id }}">
+                Eliminar Auditoría
+            </button>
+             <!-- Delete Audit Modal -->
+            <div class="modal fade" id="deleteAuditModal{{ audit.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteAuditModalLabel{{ audit.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="deleteAuditModalLabel{{ audit.id }}">Confirmar Eliminación</h5>
+                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">¿Estás seguro de que deseas eliminar la auditoría número <strong>{{ audit.audit_number or audit.id }}</strong>? Esta acción no se puede deshacer.</div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            <form action="{{ url_for('qm.delete_audit', id=audit.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección para Hallazgos de Auditoría -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Hallazgos de Auditoría</h6>
+             <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#addFindingModal">
+                <i class="fas fa-plus"></i> Añadir Hallazgo
+            </button>
+        </div>
+        <div class="card-body">
+             {% if audit.findings %}
+             <div class="table-responsive">
+                <table class="table table-bordered" id="findingsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Severidad</th>
+                            <th>Descripción</th>
+                            <th>Estado</th>
+                            <th>Asignado A</th>
+                            <th>Fecha Límite</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for finding in audit.findings %}
+                        <tr>
+                            <td>{{ finding.finding_type | title }}</td>
+                            <td>{{ finding.severity | title if finding.severity else 'N/A' }}</td>
+                            <td>{{ finding.description[:100] }}...</td> {# Mostrar un extracto #}
+                             <td>{{ finding.status | title }}</td>
+                             <td>{{ finding.assigned_to.username if finding.assigned_to else 'N/A' }}</td>
+                             <td>{{ finding.due_date.strftime('%Y-%m-%d') if finding.due_date else 'N/A' }}</td>
+                            <td>
+                                {# TODO: Botón para ver detalle del hallazgo si se crea una vista específica #}
+                                <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editFindingModal{{ finding.id }}">
+                                    Editar
+                                </button>
+                                 <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteFindingModal{{ finding.id }}">
+                                    Eliminar
+                                </button>
+
+                                <!-- Edit Finding Modal -->
+                                <div class="modal fade" id="editFindingModal{{ finding.id }}" tabindex="-1" role="dialog" aria-labelledby="editFindingModalLabel{{ finding.id }}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editFindingModalLabel{{ finding.id }}">Editar Hallazgo de Auditoría</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                {# Renderizar formulario de edición aquí. Usamos el formulario de añadir pero intentamos precargar #}
+                                                <form action="{{ url_for('qm.edit_audit_finding', finding_id=finding.id) }}" method="POST">
+                                                     {{ add_finding_form.csrf_token }}
+                                                    {{ add_finding_form.id(value=finding.id) }} {# Pasar el ID del finding #}
+
+                                                     <div class="form-group">
+                                                        {{ add_finding_form.finding_type.label(class="form-label") }}
+                                                        {{ add_finding_form.finding_type(class="form-control", value=finding.finding_type) }}
+                                                        {% for error in add_finding_form.finding_type.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_finding_form.severity.label(class="form-label") }}
+                                                        {{ add_finding_form.severity(class="form-control", value=finding.severity) }}
+                                                        {% for error in add_finding_form.severity.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_finding_form.clause.label(class="form-label") }}
+                                                        {{ add_finding_form.clause(class="form-control", value=finding.clause) }}
+                                                        {% for error in add_finding_form.clause.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="form-group">
+                                                        {{ add_finding_form.description.label(class="form-label") }}
+                                                        {{ add_finding_form.description(class="form-control", rows="3", value=finding.description) }}
+                                                        {% for error in add_finding_form.description.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="form-group">
+                                                        {{ add_finding_form.evidence.label(class="form-label") }}
+                                                        {{ add_finding_form.evidence(class="form-control", rows="3", value=finding.evidence) }}
+                                                        {% for error in add_finding_form.evidence.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-group">
+                                                        {{ add_finding_form.status.label(class="form-label") }}
+                                                        {{ add_finding_form.status(class="form-control", value=finding.status) }}
+                                                        {% for error in add_finding_form.status.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="form-group">
+                                                        {{ add_finding_form.assigned_to.label(class="form-label") }}
+                                                        {{ add_finding_form.assigned_to(class="form-control", obj=finding.assigned_to) }} {# Precargar QuerySelectField #}
+                                                        {% for error in add_finding_form.assigned_to.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                     <div class="form-row">
+                                                         <div class="form-group col-md-6">
+                                                            {{ add_finding_form.due_date.label(class="form-label") }}
+                                                             <div class="input-group date edit_finding_datepicker" data-target-input="nearest">
+                                                                {{ add_finding_form.due_date(class="form-control datetimepicker-input", data_target=".edit_finding_datepicker", value=finding.due_date) }}
+                                                                <div class="input-group-append" data-target=".edit_finding_datepicker" data-toggle="datetimepicker">
+                                                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                                                </div>
+                                                            </div>
+                                                             {% for error in add_finding_form.due_date.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                            {% endfor %}
+                                                         </div>
+                                                         <div class="form-group col-md-6">
+                                                            {{ add_finding_form.completion_date.label(class="form-label") }}
+                                                             <div class="input-group date edit_finding_datepicker" data-target-input="nearest">
+                                                                {{ add_finding_form.completion_date(class="form-control datetimepicker-input", data_target=".edit_finding_datepicker", value=finding.completion_date) }}
+                                                                <div class="input-group-append" data-target=".edit_finding_datepicker" data-toggle="datetimepicker">
+                                                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                                                </div>
+                                                            </div>
+                                                            {% for error in add_finding_form.completion_date.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                            {% endfor %}
+                                                         </div>
+                                                     </div>
+                                                      <div class="form-row">
+                                                          <div class="form-group col-md-6">
+                                                            {{ add_finding_form.verified_by.label(class="form-label") }}
+                                                            {{ add_finding_form.verified_by(class="form-control", obj=finding.verified_by) }} {# Precargar QuerySelectField #}
+                                                             {% for error in add_finding_form.verified_by.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                            {% endfor %}
+                                                         </div>
+                                                         <div class="form-group col-md-6">
+                                                            {{ add_finding_form.verification_date.label(class="form-label") }}
+                                                             <div class="input-group date edit_finding_datepicker" data-target-input="nearest">
+                                                                {{ add_finding_form.verification_date(class="form-control datetimepicker-input", data_target=".edit_finding_datepicker", value=finding.verification_date) }}
+                                                                <div class="input-group-append" data-target=".edit_finding_datepicker" data-toggle="datetimepicker">
+                                                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                                                </div>
+                                                            </div>
+                                                             {% for error in add_finding_form.verification_date.errors %}
+                                                            <span class="text-danger">[{{ error }}]</span>
+                                                            {% endfor %}
+                                                         </div>
+                                                      </div>
+                                                     <div class="form-group">
+                                                        {{ add_finding_form.notes.label(class="form-label") }}
+                                                        {{ add_finding_form.notes(class="form-control", rows="3", value=finding.notes) }}
+                                                        {% for error in add_finding_form.notes.errors %}
+                                                        <span class="text-danger">[{{ error }}]</span>
+                                                        {% endfor %}
+                                                    </div>
+
+
+                                                    <div class="modal-footer">
+                                                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                        {{ add_finding_form.submit(class="btn btn-primary", value="Guardar Cambios") }}
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Delete Finding Modal -->
+                                <div class="modal fade" id="deleteFindingModal{{ finding.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteFindingModalLabel{{ finding.id }}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteFindingModalLabel{{ finding.id }}">Confirmar Eliminación</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">¿Estás seguro de que deseas eliminar este hallazgo de auditoría? Esta acción no se puede deshacer.</div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                <form action="{{ url_for('qm.delete_audit_finding', finding_id=finding.id) }}" method="POST" style="display: inline;">
+                                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+             </div>
+             {% else %}
+             <p>No hay hallazgos registrados para esta auditoría.</p>
+             {% endif %}
+        </div>
+    </div>
+
+     {# TODO: Sección para CAPAs relacionadas con Hallazgos de esta Auditoría #}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Acciones Correctivas/Preventivas (CAPA) Relacionadas con Hallazgos</h6>
+        </div>
+        <div class="card-body">
+             <p>Lista de CAPAs relacionadas con hallazgos de esta auditoría.</p>
+             {# TODO: Mostrar lista de CAPAs #}
+        </div>
+    </div>
+
+    <!-- Add Finding Modal -->
+    <div class="modal fade" id="addFindingModal" tabindex="-1" role="dialog" aria-labelledby="addFindingModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addFindingModalLabel">Añadir Nuevo Hallazgo de Auditoría</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('qm.add_audit_finding', audit_id=audit.id) }}" method="POST">
+                        {{ add_finding_form.csrf_token }}
+                         {# Omitir el campo audit_id, ya que se pasa en la URL de la acción del formulario #}
+                        {{ add_finding_form.id() }} {# Asegurarse de que el campo id oculto esté presente #}
+
+                         <div class="form-group">
+                            {{ add_finding_form.finding_type.label(class="form-label") }}
+                            {{ add_finding_form.finding_type(class="form-control") }}
+                            {% for error in add_finding_form.finding_type.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_finding_form.severity.label(class="form-label") }}
+                            {{ add_finding_form.severity(class="form-control") }}
+                            {% for error in add_finding_form.severity.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_finding_form.clause.label(class="form-label") }}
+                            {{ add_finding_form.clause(class="form-control") }}
+                            {% for error in add_finding_form.clause.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            {{ add_finding_form.description.label(class="form-label") }}
+                            {{ add_finding_form.description(class="form-control", rows="3") }}
+                            {% for error in add_finding_form.description.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            {{ add_finding_form.evidence.label(class="form-label") }}
+                            {{ add_finding_form.evidence(class="form-control", rows="3") }}
+                            {% for error in add_finding_form.evidence.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-group">
+                            {{ add_finding_form.status.label(class="form-label") }}
+                            {{ add_finding_form.status(class="form-control") }}
+                            {% for error in add_finding_form.status.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            {{ add_finding_form.assigned_to.label(class="form-label") }}
+                            {{ add_finding_form.assigned_to(class="form-control") }}
+                            {% for error in add_finding_form.assigned_to.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+                         <div class="form-row">
+                             <div class="form-group col-md-6">
+                                {{ add_finding_form.due_date.label(class="form-label") }}
+                                 <div class="input-group date add_finding_datepicker" data-target-input="nearest">
+                                    {{ add_finding_form.due_date(class="form-control datetimepicker-input", data_target=".add_finding_datepicker") }}
+                                    <div class="input-group-append" data-target=".add_finding_datepicker" data-toggle="datetimepicker">
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                    </div>
+                                </div>
+                                 {% for error in add_finding_form.due_date.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                                {% endfor %}
+                             </div>
+                             <div class="form-group col-md-6">
+                                {{ add_finding_form.completion_date.label(class="form-label") }}
+                                 <div class="input-group date add_finding_datepicker" data-target-input="nearest">
+                                    {{ add_finding_form.completion_date(class="form-control datetimepicker-input", data_target=".add_finding_datepicker") }}
+                                    <div class="input-group-append" data-target=".add_finding_datepicker" data-toggle="datetimepicker">
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                    </div>
+                                </div>
+                                {% for error in add_finding_form.completion_date.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                                {% endfor %}
+                             </div>
+                         </div>
+                          <div class="form-row">
+                              <div class="form-group col-md-6">
+                                {{ add_finding_form.verified_by.label(class="form-label") }}
+                                {{ add_finding_form.verified_by(class="form-control") }}
+                                 {% for error in add_finding_form.verified_by.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                                {% endfor %}
+                             </div>
+                             <div class="form-group col-md-6">
+                                {{ add_finding_form.verification_date.label(class="form-label") }}
+                                 <div class="input-group date add_finding_datepicker" data-target-input="nearest">
+                                    {{ add_finding_form.verification_date(class="form-control datetimepicker-input", data_target=".add_finding_datepicker") }}
+                                    <div class="input-group-append" data-target=".add_finding_datepicker" data-toggle="datetimepicker">
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                    </div>
+                                </div>
+                                 {% for error in add_finding_form.verification_date.errors %}
+                                <span class="text-danger">[{{ error }}]</span>
+                                {% endfor %}
+                             </div>
+                          </div>
+                         <div class="form-group">
+                            {{ add_finding_form.notes.label(class="form-label") }}
+                            {{ add_finding_form.notes(class="form-control", rows="3") }}
+                            {% for error in add_finding_form.notes.errors %}
+                            <span class="text-danger">[{{ error }}]</span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                            {{ add_finding_form.submit(class="btn btn-primary", value="Añadir Hallazgo") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Script para abrir modales si hay un parámetro 'modal' en la URL (indicando errores de validación)
+    $(document).ready(function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const modalToOpen = urlParams.get('modal');
+
+        if (modalToOpen) {
+            $(`#${modalToOpen}`).modal('show');
+             // Opcional: Limpiar el parámetro modal de la URL sin recargar la página
+            history.replaceState(null, null, window.location.pathname + window.location.search.replace(/&?modal=[^&]*/, ''));
+        }
+    });
+
+    $(function () {
+        // Initialize datepickers for add finding modal
+        $('.add_finding_datepicker').datetimepicker({ format: 'YYYY-MM-DD' }); // Usamos una clase para el selector
+
+         // TODO: Implementar lógica JS para poblar dinámicamente los formularios de edición de finding si es necesario
+         // O asegurar que la precarga con Jinja es suficiente para todos los campos.
+         // Los datepickers en los modales de edición necesitarán ser inicializados después de que el modal se abra si se carga dinámicamente el formulario
+         $('.edit_finding_datepicker').datetimepicker({ format: 'YYYY-MM-DD' });
+
+    });
+</script>
+{% endblock %} 

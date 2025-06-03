@@ -1,0 +1,569 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Proveedores - ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Gestión de Proveedores</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSupplierModal">
+            <i class="fas fa-plus me-2"></i>
+            Nuevo Proveedor
+        </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('mm.suppliers') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Buscar</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.args.get('search', '') }}" 
+                           placeholder="Nombre, RUC...">
+                </div>
+                <div class="col-md-3">
+                    <label for="category" class="form-label">Categoría</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">Todas</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if request.args.get('category')|int == category.id %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Estado</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Todos</option>
+                        <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>
+                            Activo
+                        </option>
+                        <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>
+                            Inactivo
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-2"></i>
+                        Filtrar
+                    </button>
+                    <a href="{{ url_for('mm.suppliers') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>
+                        Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de Proveedores -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>RUC</th>
+                            <th>Nombre</th>
+                            <th>Categoría</th>
+                            <th>Contacto</th>
+                            <th>Teléfono</th>
+                            <th>Email</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for supplier in suppliers %}
+                        <tr>
+                            <td>{{ supplier.ruc }}</td>
+                            <td>{{ supplier.name }}</td>
+                            <td>{{ supplier.category.name }}</td>
+                            <td>{{ supplier.contact_name }}</td>
+                            <td>{{ supplier.phone }}</td>
+                            <td>{{ supplier.email }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if supplier.is_active else 'danger' }}">
+                                    {{ 'Activo' if supplier.is_active else 'Inactivo' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editSupplierModal{{ supplier.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#viewSupplierModal{{ supplier.id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteSupplierModal{{ supplier.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if pagination %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% for page in pagination.iter_pages() %}
+                        {% if page %}
+                            <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('mm.suppliers', page=page, **request.args) }}">
+                                    {{ page }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Proveedor -->
+<div class="modal fade" id="createSupplierModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Proveedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.create_supplier') }}" class="needs-validation" novalidate>
+                {{ create_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="ruc" class="form-label">RUC</label>
+                            {{ create_form.ruc(class="form-control") }}
+                            {% if create_form.ruc.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.ruc.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Nombre</label>
+                            {{ create_form.name(class="form-control") }}
+                            {% if create_form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label">Categoría</label>
+                            {{ create_form.category(class="form-select") }}
+                            {% if create_form.category.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.category.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="contact_name" class="form-label">Nombre de Contacto</label>
+                            {{ create_form.contact_name(class="form-control") }}
+                            {% if create_form.contact_name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.contact_name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Teléfono</label>
+                            {{ create_form.phone(class="form-control") }}
+                            {% if create_form.phone.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.phone.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            {{ create_form.email(class="form-control", type="email") }}
+                            {% if create_form.email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.email.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Dirección</label>
+                        {{ create_form.address(class="form-control", rows="2") }}
+                        {% if create_form.address.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in create_form.address.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        {{ create_form.description(class="form-control", rows="3") }}
+                        {% if create_form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in create_form.description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Proveedor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modales Editar Proveedor -->
+{% for supplier in suppliers %}
+<div class="modal fade" id="editSupplierModal{{ supplier.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Proveedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.edit_supplier', id=supplier.id) }}" class="needs-validation" novalidate>
+                {{ edit_forms[supplier.id].hidden_tag() }}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="ruc" class="form-label">RUC</label>
+                            {{ edit_forms[supplier.id].ruc(class="form-control") }}
+                            {% if edit_forms[supplier.id].ruc.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[supplier.id].ruc.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Nombre</label>
+                            {{ edit_forms[supplier.id].name(class="form-control") }}
+                            {% if edit_forms[supplier.id].name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[supplier.id].name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label">Categoría</label>
+                            {{ edit_forms[supplier.id].category(class="form-select") }}
+                            {% if edit_forms[supplier.id].category.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[supplier.id].category.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="contact_name" class="form-label">Nombre de Contacto</label>
+                            {{ edit_forms[supplier.id].contact_name(class="form-control") }}
+                            {% if edit_forms[supplier.id].contact_name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[supplier.id].contact_name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Teléfono</label>
+                            {{ edit_forms[supplier.id].phone(class="form-control") }}
+                            {% if edit_forms[supplier.id].phone.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[supplier.id].phone.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            {{ edit_forms[supplier.id].email(class="form-control", type="email") }}
+                            {% if edit_forms[supplier.id].email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[supplier.id].email.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Dirección</label>
+                        {{ edit_forms[supplier.id].address(class="form-control", rows="2") }}
+                        {% if edit_forms[supplier.id].address.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in edit_forms[supplier.id].address.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        {{ edit_forms[supplier.id].description(class="form-control", rows="3") }}
+                        {% if edit_forms[supplier.id].description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in edit_forms[supplier.id].description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            {{ edit_forms[supplier.id].is_active(class="form-check-input") }}
+                            <label class="form-check-label" for="is_active">
+                                Proveedor Activo
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ver Proveedor -->
+<div class="modal fade" id="viewSupplierModal{{ supplier.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles del Proveedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">RUC</dt>
+                            <dd class="col-sm-8">{{ supplier.ruc }}</dd>
+
+                            <dt class="col-sm-4">Nombre</dt>
+                            <dd class="col-sm-8">{{ supplier.name }}</dd>
+
+                            <dt class="col-sm-4">Categoría</dt>
+                            <dd class="col-sm-8">{{ supplier.category.name }}</dd>
+
+                            <dt class="col-sm-4">Contacto</dt>
+                            <dd class="col-sm-8">{{ supplier.contact_name }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Teléfono</dt>
+                            <dd class="col-sm-8">{{ supplier.phone }}</dd>
+
+                            <dt class="col-sm-4">Email</dt>
+                            <dd class="col-sm-8">{{ supplier.email }}</dd>
+
+                            <dt class="col-sm-4">Estado</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-{{ 'success' if supplier.is_active else 'danger' }}">
+                                    {{ 'Activo' if supplier.is_active else 'Inactivo' }}
+                                </span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Dirección</h6>
+                        <p>{{ supplier.address or 'Sin dirección' }}</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Descripción</h6>
+                        <p>{{ supplier.description or 'Sin descripción' }}</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Materiales Suministrados</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Material</th>
+                                        <th>Última Compra</th>
+                                        <th>Precio Promedio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for material in supplier.materials %}
+                                    <tr>
+                                        <td>{{ material.code }}</td>
+                                        <td>{{ material.name }}</td>
+                                        <td>{{ material.last_purchase_date|format_date if material.last_purchase_date else 'Nunca' }}</td>
+                                        <td>{{ material.average_price|format_currency if material.average_price else 'N/A' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Historial de Compras</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Número</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for purchase in supplier.purchases %}
+                                    <tr>
+                                        <td>{{ purchase.date|format_date }}</td>
+                                        <td>{{ purchase.number }}</td>
+                                        <td>{{ purchase.total|format_currency }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ purchase.status|status_color }}">
+                                                {{ purchase.status|title }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Eliminar Proveedor -->
+<div class="modal fade" id="deleteSupplierModal{{ supplier.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar Proveedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar el proveedor <strong>{{ supplier.name }}</strong>?</p>
+                {% if supplier.purchases %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Este proveedor tiene órdenes de compra asociadas. No se puede eliminar.
+                </div>
+                {% endif %}
+                <p class="text-danger">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('mm.delete_supplier', id=supplier.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger" {% if supplier.purchases %}disabled{% endif %}>
+                        Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+</script>
+{% endblock %} 

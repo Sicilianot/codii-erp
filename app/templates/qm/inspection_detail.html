@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Inspección #{{ inspection.inspection_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado y Acciones -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Detalle de Inspección #{{ inspection.inspection_number }}</h2>
+            <p class="text-muted">
+                Tipo: {{ inspection.inspection_type }} | Creada el {{ inspection.created_at.strftime('%d/%m/%Y %H:%M') }} por {{ inspection.created_by.name }}
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('qm.list_inspections') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a la Lista
+            </a>
+            <button class="btn btn-secondary" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimir Detalles
+            </button>
+            {% if inspection.status != 'completed' and inspection.status != 'cancelled' %}
+            <a href="{{ url_for('qm.edit_inspection', id=inspection.id) }}" class="btn btn-primary" title="Editar Inspección">
+                <i class="fas fa-edit"></i> Editar
+            </a>
+             <form action="{{ url_for('qm.cancel_inspection', id=inspection.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de cancelar esta inspección?');">
+                <button type="submit" class="btn btn-danger" title="Cancelar Inspección">
+                    <i class="fas fa-times-circle"></i> Cancelar
+                </button>
+            </form>
+            {% endif %}
+             {% if inspection.status == 'in_progress' %}
+            <form action="{{ url_for('qm.complete_inspection', id=inspection.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de completar esta inspección?');">
+                <button type="submit" class="btn btn-success" title="Completar Inspección">
+                    <i class="fas fa-check-circle"></i> Completar
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información General y Referencia -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">Información General</div>
+                <div class="card-body">
+                    <p><strong>Número de Inspección:</strong> {{ inspection.inspection_number }}</p>
+                    <p><strong>Tipo de Inspección:</strong> {{ inspection.inspection_type }}</p>
+                    <p><strong>Estado:</strong>
+                        {% if inspection.status == 'pending' %}
+                        <span class="badge bg-warning">Pendiente</span>
+                        {% elif inspection.status == 'in_process' %}
+                        <span class="badge bg-primary">En Progreso</span>
+                        {% elif inspection.status == 'completed' %}
+                        <span class="badge bg-success">Completada</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Cancelada</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Fecha de Creación:</strong> {{ inspection.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                    <p><strong>Fecha de Vencimiento:</strong> {{ inspection.due_date.strftime('%d/%m/%Y') if inspection.due_date else 'N/A' }}</p>
+                     <p><strong>Fecha de Completado:</strong> {{ inspection.completed_at.strftime('%d/%m/%Y %H:%M') if inspection.completed_at else 'N/A' }}</p>
+                    <p><strong>Inspector Asignado:</strong> {{ inspection.inspector.name if inspection.inspector else 'N/A' }}</p>
+                    <p><strong>Notas:</strong> {{ inspection.notes or 'Sin notas' }}</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">Referencia</div>
+                <div class="card-body">
+                    <p><strong>Tipo de Referencia:</strong> {{ inspection.reference_type or 'N/A' }}</p>
+                    <p><strong>ID de Referencia:</strong> {{ inspection.reference_id or 'N/A' }}</p>
+                    {# TODO: Añadir enlaces o detalles de la referencia si es posible (ej: enlace a Orden de Compra o Producción) #}
+                    {% if inspection.reference_type == 'production_order' and inspection.reference_id %}
+                        <a href="{{ url_for('pp.order_detail', id=inspection.reference_id) }}" class="btn btn-sm btn-outline-primary mt-2">
+                            Ver Orden de Producción #{{ inspection.reference_id }}
+                        </a>
+                    {% endif %}
+                     {# Añadir más elif para otros tipos de referencia #}
+                </div>
+            </div>
+        </div>
+
+        <!-- Puntos de Control -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Puntos de Control</h5>
+                     {% if inspection.status != 'completed' and inspection.status != 'cancelled' %}
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newCheckpointModal">
+                        <i class="fas fa-plus"></i> Añadir Punto de Control
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th>Estándar</th>
+                                    <th>Criterio Aceptación</th>
+                                    <th>Valor Medido</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for checkpoint in inspection.checkpoints %}
+                                <tr>
+                                    <td>{{ checkpoint.description }}</td>
+                                    <td>{{ checkpoint.standard or '-' }}</td>
+                                    <td>{{ checkpoint.acceptance_criteria or '-' }}</td>
+                                    <td>{{ checkpoint.measurement_value or '-' }} {{ checkpoint.measurement_unit or '' }}</td>
+                                     <td>
+                                        {% if checkpoint.status == 'pending' %}
+                                        <span class="badge bg-warning">Pendiente</span>
+                                        {% elif checkpoint.status == 'approved' %}
+                                        <span class="badge bg-success">Aprobado</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Rechazado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if inspection.status != 'completed' and inspection.status != 'cancelled' %}
+                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editCheckpointModal{{ checkpoint.id }}" title="Editar Punto de Control">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form action="{{ url_for('qm.delete_checkpoint', id=checkpoint.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este punto de control?');">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Eliminar Punto de Control">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                         {% endif %}
+                                    </td>
+                                </tr>
+
+                                <!-- Modal Editar Punto de Control -->
+                                <div class="modal fade" id="editCheckpointModal{{ checkpoint.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Editar Punto de Control</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ url_for('qm.edit_checkpoint', id=checkpoint.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                     {{ form_edit_checkpoint.csrf_token }}
+                                                    <div class="mb-3">
+                                                        {{ form_edit_checkpoint.description.label(class="form-label") }}
+                                                        {{ form_edit_checkpoint.description(class="form-control", value=checkpoint.description, required=true) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_checkpoint.standard.label(class="form-label") }}
+                                                        {{ form_edit_checkpoint.standard(class="form-control", value=checkpoint.standard) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_checkpoint.acceptance_criteria.label(class="form-label") }}
+                                                        {{ form_edit_checkpoint.acceptance_criteria(class="form-control", value=checkpoint.acceptance_criteria) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_checkpoint.measurement_value.label(class="form-label") }}
+                                                        {{ form_edit_checkpoint.measurement_value(class="form-control", value=checkpoint.measurement_value) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_checkpoint.measurement_unit.label(class="form-label") }}
+                                                        {{ form_edit_checkpoint.measurement_unit(class="form-control", value=checkpoint.measurement_unit) }}
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        {{ form_edit_checkpoint.status.label(class="form-label") }}
+                                                        {{ form_edit_checkpoint.status(class="form-select", value=checkpoint.status, required=true) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_checkpoint.notes.label(class="form-label") }}
+                                                        {{ form_edit_checkpoint.notes(class="form-control", rows="3", value=checkpoint.notes) }}
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Conformidades -->
+         <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">No Conformidades</h5>
+                     {% if inspection.status != 'completed' and inspection.status != 'cancelled' %}
+                     <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#newNonConformityModal">
+                        <i class="fas fa-plus"></i> Registrar No Conformidad
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                     <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Severidad</th>
+                                    <th>Descripción</th>
+                                    <th>Estado</th>
+                                     <th>Asignado A</th>
+                                    <th>Fecha Límite</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for nc in inspection.non_conformities %}
+                                <tr>
+                                     <td>
+                                        {% if nc.severity == 'minor' %}
+                                        <span class="badge bg-warning">Menor</span>
+                                        {% elif nc.severity == 'major' %}
+                                        <span class="badge bg-danger">Mayor</span>
+                                        {% else %}
+                                        <span class="badge bg-dark">Crítica</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ nc.description }}</td>
+                                    <td>
+                                        {% if nc.status == 'open' %}
+                                        <span class="badge bg-danger">Abierta</span>
+                                        {% elif nc.status == 'in_progress' %}
+                                        <span class="badge bg-warning">En Progreso</span>
+                                         {% elif nc.status == 'implemented' %}
+                                        <span class="badge bg-info">Implementada</span>
+                                        {% elif nc.status == 'verified' %}
+                                        <span class="badge bg-success">Verificada</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Cerrada</span>
+                                        {% endif %}
+                                    </td>
+                                     <td>{{ nc.assigned_to.name if nc.assigned_to else 'N/A' }}</td>
+                                     <td>{{ nc.due_date.strftime('%d/%m/%Y') if nc.due_date else 'N/A' }}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                             <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editNonConformityModal{{ nc.id }}" title="Editar No Conformidad">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                             <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewNonConformityModal{{ nc.id }}" title="Ver Detalles de No Conformidad">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            {% if nc.status != 'closed' %}
+                                             <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#closeNonConformityModal{{ nc.id }}" title="Cerrar No Conformidad">
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Modal Ver Detalles No Conformidad -->
+                                <div class="modal fade" id="viewNonConformityModal{{ nc.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Detalles No Conformidad</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p><strong>Severidad:</strong>
+                                                     {% if nc.severity == 'minor' %}
+                                                    <span class="badge bg-warning">Menor</span>
+                                                    {% elif nc.severity == 'major' %}
+                                                    <span class="badge bg-danger">Mayor</span>
+                                                    {% else %}
+                                                    <span class="badge bg-dark">Crítica</span>
+                                                    {% endif %}
+                                                </p>
+                                                <p><strong>Descripción:</strong> {{ nc.description }}</p>
+                                                 <p><strong>Causa Raíz:</strong> {{ nc.root_cause or 'N/A' }}</p>
+                                                <p><strong>Acción Correctiva:</strong> {{ nc.corrective_action or 'N/A' }}</p>
+                                                <p><strong>Acción Preventiva:</strong> {{ nc.preventive_action or 'N/A' }}</p>
+                                                 <p><strong>Estado:</strong>
+                                                    {% if nc.status == 'open' %}
+                                                    <span class="badge bg-danger">Abierta</span>
+                                                    {% elif nc.status == 'in_progress' %}
+                                                    <span class="badge bg-warning">En Progreso</span>
+                                                     {% elif nc.status == 'implemented' %}
+                                                    <span class="badge bg-info">Implementada</span>
+                                                    {% elif nc.status == 'verified' %}
+                                                    <span class="badge bg-success">Verificada</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">Cerrada</span>
+                                                    {% endif %}
+                                                </p>
+                                                <p><strong>Asignado A:</strong> {{ nc.assigned_to.name if nc.assigned_to else 'N/A' }}</p>
+                                                <p><strong>Fecha Límite:</strong> {{ nc.due_date.strftime('%d/%m/%Y') if nc.due_date else 'N/A' }}</p>
+                                                <p><strong>Fecha Completado:</strong> {{ nc.completion_date.strftime('%d/%m/%Y %H:%M') if nc.completion_date else 'N/A' }}</p>
+                                                <p><strong>Verificado Por:</strong> {{ nc.verified_by.name if nc.verified_by else 'N/A' }}</p>
+                                                 <p><strong>Fecha Verificación:</strong> {{ nc.verification_date.strftime('%d/%m/%Y %H:%M') if nc.verification_date else 'N/A' }}</p>
+                                                <p><strong>Notas:</strong> {{ nc.notes or 'Sin notas' }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                 <!-- Modal Editar No Conformidad -->
+                                <div class="modal fade" id="editNonConformityModal{{ nc.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Editar No Conformidad</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ url_for('qm.edit_non_conformity', id=nc.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                     {{ form_edit_non_conformity.csrf_token }}
+                                                    <div class="mb-3">
+                                                        {{ form_edit_non_conformity.severity.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.severity(class="form-select", value=nc.severity, required=true) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_non_conformity.description.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.description(class="form-control", rows="3", value=nc.description, required=true) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_non_conformity.root_cause.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.root_cause(class="form-control", rows="3", value=nc.root_cause) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_non_conformity.corrective_action.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.corrective_action(class="form-control", rows="3", value=nc.corrective_action) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_non_conformity.preventive_action.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.preventive_action(class="form-control", rows="3", value=nc.preventive_action) }}
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        {{ form_edit_non_conformity.status.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.status(class="form-select", value=nc.status, required=true) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_non_conformity.assigned_to_id.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.assigned_to_id(class="form-select", value=nc.assigned_to_id) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_edit_non_conformity.due_date.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.due_date(class="form-control", value=nc.due_date.strftime('%Y-%m-%dT%H:%M') if nc.due_date else '') }}
+                                                    </div>
+                                                      <div class="mb-3">
+                                                        {{ form_edit_non_conformity.notes.label(class="form-label") }}
+                                                        {{ form_edit_non_conformity.notes(class="form-control", rows="3", value=nc.notes) }}
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                 <!-- Modal Cerrar No Conformidad -->
+                                 <div class="modal fade" id="closeNonConformityModal{{ nc.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Cerrar No Conformidad</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                             <form action="{{ url_for('qm.close_non_conformity', id=nc.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                     {{ form_close_non_conformity.csrf_token }}
+                                                    <p>¿Está seguro de cerrar la No Conformidad <strong>#{{ nc.id }}</strong>?</p>
+                                                     <div class="mb-3">
+                                                        {{ form_close_non_conformity.verification_date.label(class="form-label") }}
+                                                        {{ form_close_non_conformity.verification_date(class="form-control", required=true) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_close_non_conformity.verified_by_id.label(class="form-label") }}
+                                                        {{ form_close_non_conformity.verified_by_id(class="form-select", required=true) }}
+                                                    </div>
+                                                     <div class="mb-3">
+                                                        {{ form_close_non_conformity.notes.label(class="form-label") }}
+                                                        {{ form_close_non_conformity.notes(class="form-control", rows="3") }}
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-success">Cerrar No Conformidad</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+         </div>
+    </div>
+</div>
+
+<!-- Modal Nuevo Punto de Control - Definición Global para usar con JS -->
+<div class="modal fade" id="newCheckpointModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Añadir Punto de Control</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('qm.add_checkpoint', inspection_id=inspection.id) }}" method="POST">
+                <div class="modal-body">
+                    {{ form_new_checkpoint.csrf_token }}
+                    <div class="mb-3">
+                        {{ form_new_checkpoint.description.label(class="form-label") }}
+                        {{ form_new_checkpoint.description(class="form-control", required=true) }}
+                    </div>
+                     <div class="mb-3">
+                        {{ form_new_checkpoint.standard.label(class="form-label") }}
+                        {{ form_new_checkpoint.standard(class="form-control") }}
+                    </div>
+                     <div class="mb-3">
+                        {{ form_new_checkpoint.acceptance_criteria.label(class="form-label") }}
+                        {{ form_new_checkpoint.acceptance_criteria(class="form-control") }}
+                    </div>
+                     <div class="mb-3">
+                        {{ form_new_checkpoint.measurement_value.label(class="form-label") }}
+                        {{ form_new_checkpoint.measurement_value(class="form-control") }}
+                    </div>
+                     <div class="mb-3">
+                        {{ form_new_checkpoint.measurement_unit.label(class="form-label") }}
+                        {{ form_new_checkpoint.measurement_unit(class="form-control") }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form_new_checkpoint.status.label(class="form-label") }}
+                        {{ form_new_checkpoint.status(class="form-select", required=true) }}
+                    </div>
+                     <div class="mb-3">
+                        {{ form_new_checkpoint.notes.label(class="form-label") }}
+                        {{ form_new_checkpoint.notes(class="form-control", rows="3") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Punto de Control</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva No Conformidad - Definición Global -->
+<div class="modal fade" id="newNonConformityModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar No Conformidad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('qm.add_non_conformity', inspection_id=inspection.id) }}" method="POST">
+                 <div class="modal-body">
+                     {{ form_new_non_conformity.csrf_token }}
+                     <div class="mb-3">
+                         {{ form_new_non_conformity.severity.label(class="form-label") }}
+                         {{ form_new_non_conformity.severity(class="form-select", required=true) }}
+                     </div>
+                      <div class="mb-3">
+                         {{ form_new_non_conformity.description.label(class="form-label") }}
+                         {{ form_new_non_conformity.description(class="form-control", rows="3", required=true) }}
+                     </div>
+                      <div class="mb-3">
+                         {{ form_new_non_conformity.root_cause.label(class="form-label") }}
+                         {{ form_new_non_conformity.root_cause(class="form-control", rows="3") }}
+                     </div>
+                      <div class="mb-3">
+                         {{ form_new_non_conformity.corrective_action.label(class="form-label") }}
+                         {{ form_new_non_conformity.corrective_action(class="form-control", rows="3") }}
+                     </div>
+                      <div class="mb-3">
+                         {{ form_new_non_conformity.preventive_action.label(class="form-label") }}
+                         {{ form_new_non_conformity.preventive_action(class="form-control", rows="3") }}
+                     </div>
+                     <div class="mb-3">
+                         {{ form_new_non_conformity.assigned_to_id.label(class="form-label") }}
+                         {{ form_new_non_conformity.assigned_to_id(class="form-select") }}
+                     </div>
+                      <div class="mb-3">
+                         {{ form_new_non_conformity.due_date.label(class="form-label") }}
+                         {{ form_new_non_conformity.due_date(class="form-control") }}
+                     </div>
+                      <div class="mb-3">
+                         {{ form_new_non_conformity.notes.label(class="form-label") }}
+                         {{ form_new_non_conformity.notes(class="form-control", rows="3") }}
+                     </div>
+                 </div>
+                 <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Registrar No Conformidad</button>
+                 </div>
+             </form>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // Tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+
+     // Inicializar Select2 en los select del modal de nueva no conformidad (si se usa Select2)
+     // $(document).ready(function() {
+     //     $('#newNonConformityModal select').select2({
+     //         dropdownParent: $('#newNonConformityModal')
+     //     });
+     // });
+
+     // Inicializar Select2 en los select de los modales de edición de no conformidad
+    // $(document).ready(function() {
+    //     {% for nc in inspection.non_conformities %}
+    //     $('#editNonConformityModal{{ nc.id }} select[name="assigned_to_id"]').select2({
+    //          dropdownParent: $('#editNonConformityModal{{ nc.id }}')
+    //     });
+    //     {% endfor %}
+    // });
+
+    // Inicializar Select2 en los select del modal de cierre de no conformidad
+     // $(document).ready(function() {
+     //     {% for nc in inspection.non_conformities %}
+     //     $('#closeNonConformityModal{{ nc.id }} select[name="verified_by_id"]').select2({
+     //          dropdownParent: $('#closeNonConformityModal{{ nc.id }}')
+     //     });
+     //     {% endfor %}
+     // });
+
+      // Asegurar que los select de los modales de edición/cierre de NC tengan valores preseleccionados si es necesario
+    // Esto puede requerir lógica JS adicional o asegurarse que Flask-WTF maneje la inicialización con obj=...
+</script>
+{% endblock %}
+{% endblock %}

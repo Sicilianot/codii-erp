@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Materiales{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Lista de Materiales</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            {# TODO: Enlazar al formulario para añadir nuevo material #}
+            <a href="{{ url_for('mm.add_material') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Añadir Material
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">Materiales Registrados</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Unidad</th>
+                                    <th>Stock Actual</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if materials %}
+                                    {% for material in materials %}
+                                    <tr>
+                                        <td>{{ material.id }}</td>
+                                        <td>{{ material.name }}</td>
+                                        <td>{{ material.description or "-" }}</td>
+                                        <td>{{ material.unit or "-" }}</td>
+                                        <td>{{ material.current_stock or 0 }}</td>
+                                        <td>
+                                            <div class="btn-group">
+                                                {# TODO: Enlazar a la página de detalle/edición del material #}
+                                                <a href="{{ url_for('mm.edit_material', id=material.id) }}" class="btn btn-sm btn-primary" title="Editar Material">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {# TODO: Añadir formulario para eliminar material #}
+                                                <form action="{{ url_for('mm.delete_material', id=material.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este material?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Eliminar Material">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No hay materiales registrados.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

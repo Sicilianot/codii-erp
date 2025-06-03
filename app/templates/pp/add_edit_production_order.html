@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-3">{{ title }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        {{ form.csrf_token }}
+         {% if form.id %}{{ form.id() }}{% endif %} {# Hidden field for ID in edit mode #}
+
+        <div class="mb-3">
+            {{ form.product_id.label(class="form-label") }}
+            {{ form.product_id(class="form-select") }}
+            {% for error in form.product_id.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.quantity.label(class="form-label") }}
+            {{ form.quantity(class="form-control", type="number", step="0.01") }}
+            {% for error in form.quantity.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.planned_start.label(class="form-label") }}
+            {{ form.planned_start(class="form-control", type="datetime-local") }} {# Using datetime-local for combined date and time #}
+            {% for error in form.planned_start.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.planned_end.label(class="form-label") }}
+            {{ form.planned_end(class="form-control", type="datetime-local") }} {# Using datetime-local for combined date and time #}
+            {% for error in form.planned_end.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.priority.label(class="form-label") }}
+            {{ form.priority(class="form-select") }}
+            {% for error in form.priority.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+         <div class="mb-3">
+            {{ form.notes.label(class="form-label") }}
+            {{ form.notes(class="form-control", rows="3") }}
+            {% for error in form.notes.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+            {% endfor %}
+        </div>
+
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('pp.list_production_orders') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %} 

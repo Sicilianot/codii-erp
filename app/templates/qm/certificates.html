@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Certificados de Calidad{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-2xl font-semibold mb-6">{{ title }}</h1>
+
+    <div class="flex justify-between items-center mb-4">
+        {# Formulario de búsqueda y filtro #}
+        <form method="get" action="{{ url_for('qm.list_certificates') }}" class="flex items-center space-x-4">
+            <input type="text" name="search" placeholder="Buscar Certificado..." value="{{ search or '' }}" class="border rounded px-2 py-1">
+            {# TODO: Añadir filtros para tipo y estado si es necesario en el frontend #}
+            <button type="submit" class="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600">Buscar</button>
+        </form>
+
+        {# Botón para crear nuevo certificado #}
+        <a href="{{ url_for('qm.new_certificate') }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Nuevo Certificado</a>
+    </div>
+
+    {# Tabla de certificados #}
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Número</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Referencia</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha Emisión</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha Vencimiento</th>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emitido Por</th>
+                    {# TODO: Añadir columna para Estado si se agrega al modelo #}
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for certificate in certificates.items %}
+                <tr>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        <a href="{{ url_for('qm.certificate_detail', id=certificate.id) }}" class="text-blue-600 hover:underline">{{ certificate.certificate_number }}</a>
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        {{ certificate.certificate_type }}
+                    </td>
+                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        {% if certificate.reference_type %}
+                            {{ certificate.reference_type }}: {{ certificate.reference_id }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                         {{ certificate.issue_date.strftime('%Y-%m-%d') if certificate.issue_date else 'N/A' }}
+                    </td>
+                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                         {{ certificate.expiry_date.strftime('%Y-%m-%d') if certificate.expiry_date else 'N/A' }}
+                    </td>
+                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        {{ certificate.issued_by }}
+                    </td>
+                    {# TODO: Mostrar Estado si se añade al modelo #}
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-right">
+                        <a href="{{ url_for('qm.certificate_detail', id=certificate.id) }}" class="text-blue-600 hover:underline mr-3">Ver</a>
+                        <a href="{{ url_for('qm.edit_certificate', id=certificate.id) }}" class="text-yellow-600 hover:underline mr-3">Editar</a>
+                         {# Botón para Descargar Archivo #}
+                        {% if certificate.file_path %}
+                            <a href="{{ url_for('qm.download_certificate', id=certificate.id) }}" class="text-purple-600 hover:underline mr-3">Descargar</a>
+                        {% endif %}
+                         {# Botón para Eliminar (usar formulario POST) #}
+                         <form action="{{ url_for('qm.delete_certificate', id=certificate.id) }}" method="post" class="inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este certificado? Esta acción no se puede deshacer y eliminará el archivo asociado.');">
+                            <button type="submit" class="text-red-600 hover:underline">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
+                        No se encontraron certificados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Paginación #}
+    <div class="px-5 py-5 bg-white border-t flex flex-col xs:flex-row items-center xs:justify-between">
+        <span class="text-xs xs:text-sm text-gray-900">
+            Mostrando {{ certificates.page }} de {{ certificates.pages }} páginas
+        </span>
+        <div class="inline-flex mt-2 xs:mt-0">
+            {% if certificates.has_prev %}
+                <a href="{{ url_for('qm.list_certificates', page=certificates.prev_num, search=search, type=type, status=status) }}" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-l">Anterior</a>
+            {% else %}
+                 <span class="text-sm bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l opacity-50 cursor-not-allowed">Anterior</span>
+            {% endif %}
+            {% if certificates.has_next %}
+                <a href="{{ url_for('qm.list_certificates', page=certificates.next_num, search=search, type=type, status=status) }}" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-r">Siguiente</a>
+            {% else %}
+                <span class="text-sm bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r opacity-50 cursor-not-allowed">Siguiente</span>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
+{% endblock %} 

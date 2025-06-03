@@ -1,0 +1,560 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Inventario - ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado con KPIs -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total de Materiales</h6>
+                            <h2 class="mt-2 mb-0">{{ total_materials }}</h2>
+                        </div>
+                        <i class="fas fa-boxes fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Stock Total</h6>
+                            <h2 class="mt-2 mb-0">{{ total_stock }}</h2>
+                        </div>
+                        <i class="fas fa-warehouse fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Stock Bajo</h6>
+                            <h2 class="mt-2 mb-0">{{ low_stock_count }}</h2>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Valor Total</h6>
+                            <h2 class="mt-2 mb-0">{{ total_value|format_currency }}</h2>
+                        </div>
+                        <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros y Acciones -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Buscar</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="search" name="search" 
+                               value="{{ request.args.get('search', '') }}" 
+                               placeholder="Código, nombre...">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label for="category" class="form-label">Categoría</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">Todas</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if request.args.get('category')|int == category.id %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="stock_status" class="form-label">Estado Stock</label>
+                    <select class="form-select" id="stock_status" name="stock_status">
+                        <option value="">Todos</option>
+                        <option value="low" {% if request.args.get('stock_status') == 'low' %}selected{% endif %}>
+                            Stock Bajo
+                        </option>
+                        <option value="out" {% if request.args.get('stock_status') == 'out' %}selected{% endif %}>
+                            Sin Stock
+                        </option>
+                        <option value="normal" {% if request.args.get('stock_status') == 'normal' %}selected{% endif %}>
+                            Stock Normal
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Estado</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Todos</option>
+                        <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>
+                            Activo
+                        </option>
+                        <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>
+                            Inactivo
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-2"></i>
+                        Filtrar
+                    </button>
+                    <a href="{{ url_for('mm.inventory') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-times me-2"></i>
+                        Limpiar
+                    </a>
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#adjustStockModal">
+                        <i class="fas fa-plus-minus me-2"></i>
+                        Ajuste
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Inventario -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Material</th>
+                            <th>Categoría</th>
+                            <th>Stock Actual</th>
+                            <th>Stock Mínimo</th>
+                            <th>Unidad</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for material in materials %}
+                        <tr>
+                            <td>{{ material.code }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if material.image %}
+                                    <img src="{{ material.image }}" alt="{{ material.name }}" 
+                                         class="rounded me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                    {% else %}
+                                    <div class="rounded me-2 d-flex align-items-center justify-content-center bg-light" 
+                                         style="width: 32px; height: 32px;">
+                                        <i class="fas fa-box text-muted"></i>
+                                    </div>
+                                    {% endif %}
+                                    <div>
+                                        <div class="fw-bold">{{ material.name }}</div>
+                                        <small class="text-muted">{{ material.description|truncate(50) }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge" style="background-color: {{ material.category.color }}">
+                                    {{ material.category.name }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                        {% set stock_percentage = (material.current_stock / material.max_stock * 100) if material.max_stock else 0 %}
+                                        <div class="progress-bar bg-{{ 'danger' if material.current_stock <= material.min_stock else 'success' }}" 
+                                             role="progressbar" 
+                                             style="width: {{ stock_percentage }}%">
+                                        </div>
+                                    </div>
+                                    <span class="fw-bold {% if material.current_stock <= material.min_stock %}text-danger{% endif %}">
+                                        {{ material.current_stock }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>{{ material.min_stock }}</td>
+                            <td>{{ material.unit }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if material.is_active else 'danger' }}">
+                                    {{ 'Activo' if material.is_active else 'Inactivo' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#viewMaterialModal{{ material.id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#adjustStockModal{{ material.id }}">
+                                        <i class="fas fa-plus-minus"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#movementHistoryModal{{ material.id }}">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if pagination %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% for page in pagination.iter_pages() %}
+                        {% if page %}
+                            <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('mm.inventory', page=page, **request.args) }}">
+                                    {{ page }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajuste de Stock -->
+<div class="modal fade" id="adjustStockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajuste de Stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.adjust_stock') }}" class="needs-validation" novalidate>
+                {{ adjust_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="material" class="form-label">Material</label>
+                        {{ adjust_form.material(class="form-select") }}
+                        {% if adjust_form.material.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in adjust_form.material.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="adjustment_type" class="form-label">Tipo de Ajuste</label>
+                        {{ adjust_form.adjustment_type(class="form-select") }}
+                        {% if adjust_form.adjustment_type.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in adjust_form.adjustment_type.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Cantidad</label>
+                        {{ adjust_form.quantity(class="form-control", type="number", min="0.01", step="0.01") }}
+                        {% if adjust_form.quantity.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in adjust_form.quantity.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas</label>
+                        {{ adjust_form.notes(class="form-control", rows="3") }}
+                        {% if adjust_form.notes.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in adjust_form.notes.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Ajuste</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modales Ver Material -->
+{% for material in materials %}
+<div class="modal fade" id="viewMaterialModal{{ material.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles del Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-4">
+                        {% if material.image %}
+                        <img src="{{ material.image }}" alt="{{ material.name }}" 
+                             class="img-fluid rounded" style="max-height: 200px;">
+                        {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                             style="height: 200px;">
+                            <i class="fas fa-box fa-4x text-muted"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-8">
+                        <h4>{{ material.name }}</h4>
+                        <p class="text-muted">{{ material.description }}</p>
+                        
+                        <dl class="row">
+                            <dt class="col-sm-4">Código</dt>
+                            <dd class="col-sm-8">{{ material.code }}</dd>
+
+                            <dt class="col-sm-4">Categoría</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge" style="background-color: {{ material.category.color }}">
+                                    {{ material.category.name }}
+                                </span>
+                            </dd>
+
+                            <dt class="col-sm-4">Stock Actual</dt>
+                            <dd class="col-sm-8">
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                        {% set stock_percentage = (material.current_stock / material.max_stock * 100) if material.max_stock else 0 %}
+                                        <div class="progress-bar bg-{{ 'danger' if material.current_stock <= material.min_stock else 'success' }}" 
+                                             role="progressbar" 
+                                             style="width: {{ stock_percentage }}%">
+                                        </div>
+                                    </div>
+                                    <span class="fw-bold {% if material.current_stock <= material.min_stock %}text-danger{% endif %}">
+                                        {{ material.current_stock }} {{ material.unit }}
+                                    </span>
+                                </div>
+                            </dd>
+
+                            <dt class="col-sm-4">Stock Mínimo</dt>
+                            <dd class="col-sm-8">{{ material.min_stock }} {{ material.unit }}</dd>
+
+                            <dt class="col-sm-4">Stock Máximo</dt>
+                            <dd class="col-sm-8">{{ material.max_stock or 'No definido' }} {{ material.unit }}</dd>
+
+                            <dt class="col-sm-4">Ubicación</dt>
+                            <dd class="col-sm-8">{{ material.location or 'No definida' }}</dd>
+
+                            <dt class="col-sm-4">Estado</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-{{ 'success' if material.is_active else 'danger' }}">
+                                    {{ 'Activo' if material.is_active else 'Inactivo' }}
+                                </span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h5>Últimos Movimientos</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Cantidad</th>
+                                        <th>Usuario</th>
+                                        <th>Notas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for movement in material.recent_movements %}
+                                    <tr>
+                                        <td>{{ movement.date|format_datetime }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ movement.type|movement_color }}">
+                                                {{ movement.type|title }}
+                                            </span>
+                                        </td>
+                                        <td>{{ movement.quantity }} {{ material.unit }}</td>
+                                        <td>{{ movement.user.full_name }}</td>
+                                        <td>{{ movement.notes|truncate(50) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#adjustStockModal{{ material.id }}">
+                    Ajustar Stock
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajuste de Stock Individual -->
+<div class="modal fade" id="adjustStockModal{{ material.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajuste de Stock - {{ material.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.adjust_stock', material_id=material.id) }}" class="needs-validation" novalidate>
+                {{ adjust_forms[material.id].hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="adjustment_type" class="form-label">Tipo de Ajuste</label>
+                        {{ adjust_forms[material.id].adjustment_type(class="form-select") }}
+                        {% if adjust_forms[material.id].adjustment_type.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in adjust_forms[material.id].adjustment_type.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Cantidad</label>
+                        {{ adjust_forms[material.id].quantity(class="form-control", type="number", min="0.01", step="0.01") }}
+                        {% if adjust_forms[material.id].quantity.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in adjust_forms[material.id].quantity.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas</label>
+                        {{ adjust_forms[material.id].notes(class="form-control", rows="3") }}
+                        {% if adjust_forms[material.id].notes.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in adjust_forms[material.id].notes.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Ajuste</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historial de Movimientos -->
+<div class="modal fade" id="movementHistoryModal{{ material.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Historial de Movimientos - {{ material.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Cantidad</th>
+                                <th>Stock Resultante</th>
+                                <th>Usuario</th>
+                                <th>Notas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for movement in material.movements %}
+                            <tr>
+                                <td>{{ movement.date|format_datetime }}</td>
+                                <td>
+                                    <span class="badge bg-{{ movement.type|movement_color }}">
+                                        {{ movement.type|title }}
+                                    </span>
+                                </td>
+                                <td>{{ movement.quantity }} {{ material.unit }}</td>
+                                <td>{{ movement.resulting_stock }} {{ material.unit }}</td>
+                                <td>{{ movement.user.full_name }}</td>
+                                <td>{{ movement.notes }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+
+    // Inicializar tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %} 

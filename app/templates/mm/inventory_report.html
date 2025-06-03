@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Inventario - ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Reporte de Inventario</h1>
+        <div>
+            <button type="button" class="btn btn-success me-2" onclick="window.print()">
+                <i class="fas fa-print me-2"></i>
+                Imprimir
+            </button>
+            <button type="button" class="btn btn-primary" onclick="exportToExcel()">
+                <i class="fas fa-file-excel me-2"></i>
+                Exportar a Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Materiales</h5>
+                    <h2 class="mb-0">{{ total_materials }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Stock Total</h5>
+                    <h2 class="mb-0">{{ total_stock }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Stock Bajo</h5>
+                    <h2 class="mb-0">{{ low_stock_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Valor Total</h5>
+                    <h2 class="mb-0">{{ total_value|format_currency }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('mm.inventory_report') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Buscar</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ current_filters.search }}" placeholder="Código, nombre o descripción">
+                </div>
+                <div class="col-md-3">
+                    <label for="category" class="form-label">Categoría</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">Todas</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if current_filters.category == category.id %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="stock_status" class="form-label">Estado Stock</label>
+                    <select class="form-select" id="stock_status" name="stock_status">
+                        <option value="">Todos</option>
+                        <option value="low" {% if current_filters.stock_status == 'low' %}selected{% endif %}>
+                            Stock Bajo
+                        </option>
+                        <option value="out" {% if current_filters.stock_status == 'out' %}selected{% endif %}>
+                            Sin Stock
+                        </option>
+                        <option value="normal" {% if current_filters.stock_status == 'normal' %}selected{% endif %}>
+                            Stock Normal
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-2"></i>
+                        Filtrar
+                    </button>
+                    <a href="{{ url_for('mm.inventory_report') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>
+                        Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de Reporte -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="{{ url_for('mm.inventory_report', sort_by='code', sort_order='asc' if current_filters.sort_by != 'code' or current_filters.sort_order == 'desc' else 'desc', **{k:v for k,v in current_filters.items() if k not in ['sort_by', 'sort_order']}) }}" 
+                                   class="text-decoration-none text-dark">
+                                    Código
+                                    {% if current_filters.sort_by == 'code' %}
+                                    <i class="fas fa-sort-{{ 'up' if current_filters.sort_order == 'asc' else 'down' }}"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('mm.inventory_report', sort_by='name', sort_order='asc' if current_filters.sort_by != 'name' or current_filters.sort_order == 'desc' else 'desc', **{k:v for k,v in current_filters.items() if k not in ['sort_by', 'sort_order']}) }}"
+                                   class="text-decoration-none text-dark">
+                                    Material
+                                    {% if current_filters.sort_by == 'name' %}
+                                    <i class="fas fa-sort-{{ 'up' if current_filters.sort_order == 'asc' else 'down' }}"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>Categoría</th>
+                            <th>
+                                <a href="{{ url_for('mm.inventory_report', sort_by='stock', sort_order='asc' if current_filters.sort_by != 'stock' or current_filters.sort_order == 'desc' else 'desc', **{k:v for k,v in current_filters.items() if k not in ['sort_by', 'sort_order']}) }}"
+                                   class="text-decoration-none text-dark">
+                                    Stock Actual
+                                    {% if current_filters.sort_by == 'stock' %}
+                                    <i class="fas fa-sort-{{ 'up' if current_filters.sort_order == 'asc' else 'down' }}"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>Stock Mínimo</th>
+                            <th>Stock Máximo</th>
+                            <th>Unidad</th>
+                            <th>Precio Unitario</th>
+                            <th>
+                                <a href="{{ url_for('mm.inventory_report', sort_by='value', sort_order='asc' if current_filters.sort_by != 'value' or current_filters.sort_order == 'desc' else 'desc', **{k:v for k,v in current_filters.items() if k not in ['sort_by', 'sort_order']}) }}"
+                                   class="text-decoration-none text-dark">
+                                    Valor Total
+                                    {% if current_filters.sort_by == 'value' %}
+                                    <i class="fas fa-sort-{{ 'up' if current_filters.sort_order == 'asc' else 'down' }}"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for material in materials %}
+                        <tr>
+                            <td>{{ material.code }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if material.image %}
+                                    <img src="{{ material.image }}" alt="{{ material.name }}" 
+                                         class="rounded me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                    {% else %}
+                                    <div class="rounded me-2 d-flex align-items-center justify-content-center bg-light" 
+                                         style="width: 32px; height: 32px;">
+                                        <i class="fas fa-box text-muted"></i>
+                                    </div>
+                                    {% endif %}
+                                    <div>
+                                        <div class="fw-bold">{{ material.name }}</div>
+                                        <small class="text-muted">{{ material.description|truncate(50) }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge" style="background-color: {{ material.category.color }}">
+                                    {{ material.category.name }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                        {% set stock_percentage = (material.current_stock / material.max_stock * 100) if material.max_stock else 0 %}
+                                        <div class="progress-bar bg-{{ 'danger' if material.current_stock <= material.min_stock else 'success' }}" 
+                                             role="progressbar" 
+                                             style="width: {{ stock_percentage }}%">
+                                        </div>
+                                    </div>
+                                    <span class="fw-bold {% if material.current_stock <= material.min_stock %}text-danger{% endif %}">
+                                        {{ material.current_stock }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>{{ material.min_stock }}</td>
+                            <td>{{ material.max_stock or '-' }}</td>
+                            <td>{{ material.unit }}</td>
+                            <td>{{ material.unit_price|format_currency }}</td>
+                            <td>{{ material.total_value|format_currency }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if material.is_active else 'danger' }}">
+                                    {{ 'Activo' if material.is_active else 'Inactivo' }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light">
+                            <td colspan="8" class="text-end"><strong>Total:</strong></td>
+                            <td colspan="2">
+                                <strong>{{ total_value|format_currency }}</strong>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+<script>
+function exportToExcel() {
+    const table = document.getElementById('inventoryTable');
+    const wb = XLSX.utils.table_to_book(table, {sheet: "Inventario"});
+    XLSX.writeFile(wb, "reporte_inventario.xlsx");
+}
+</script>
+{% endblock %} 

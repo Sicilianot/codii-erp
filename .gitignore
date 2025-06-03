@@ -1,0 +1,42 @@
+# Ignorar entornos virtuales
+virtualenv/
+venv/
+.venv/
+
+# Ignorar caché y archivos compilados de Python
+__pycache__/
+*.pyc
+
+# Ignorar archivos de base de datos locales (si usas SQLite)
+*.db
+/instance/*.db
+
+# Ignorar archivos de variables de entorno sensibles
+.env
+.flaskenv
+
+# Ignorar archivos de logs y depuración
+*.log
+*.txt
+
+# Ignorar directorios y archivos específicos de IDEs (opcional pero recomendado)
+.idea/
+.vscode/
+*.swp
+
+# Ignorar directorios de subida de archivos (si los hay)
+uploads/
+
+# Ignorar archivos de distribución y empaquetado
+dist/
+build/
+*.egg-info/
+
+# Ignorar resultados de pruebas (si los hay)
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ignorar archivos específicos de sistemas operativos
+.DS_Store
+Thumbs.db 

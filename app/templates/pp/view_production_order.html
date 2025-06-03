@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+
+{% block title %}{{ order.order_number }} - Orden de Producción{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Orden de Producción #{{ order.order_number }}</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card mb-4">
+        <div class="card-header">Detalles de la Orden</div>
+        <div class="card-body">
+            <p><strong>Producto:</strong> {{ order.product.name if order.product else 'N/A' }}</p>
+            <p><strong>Cantidad:</strong> {{ order.quantity }}</p>
+            <p><strong>Estado:</strong> {{ order.status.capitalize() }}</p>
+            <p><strong>Prioridad:</strong> {{ order.priority.capitalize() }}</p>
+            <p><strong>Inicio Planificado:</strong> {{ order.planned_start.strftime('%Y-%m-%d %H:%M') if order.planned_start else 'N/A' }}</p>
+            <p><strong>Fin Planificado:</strong> {{ order.planned_end.strftime('%Y-%m-%d %H:%M') if order.planned_end else 'N/A' }}</p>
+            <p><strong>Costo Total Estimado:</strong> {{ order.estimated_total_cost | format_currency }}</p>
+            <p><strong>Notas:</strong> {{ order.notes if order.notes else 'Ninguna' }}</p>
+            <p><strong>Creada por:</strong> {{ order.creator.username if order.creator else 'Desconocido' }} el {{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>Última Actualización:</strong> {{ order.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+        </div>
+    </div>
+
+    <!-- Secciones para Ítems y Procesos -->
+    <ul class="nav nav-tabs mb-4" id="orderTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="items-tab" data-bs-toggle="tab" data-bs-target="#items" type="button" role="tab" aria-controls="items" aria-selected="true">Ítems (BOM)</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="processes-tab" data-bs-toggle="tab" data-bs-target="#processes" type="button" role="tab" aria-controls="processes" aria-selected="false">Procesos (Routing)</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="orderTabsContent">
+        <!-- Sección de Ítems -->
+        <div class="tab-pane fade show active" id="items" role="tabpanel" aria-labelledby="items-tab">
+            <h3>Ítems de la Orden</h3>
+            <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addItemModal">Añadir Ítem</button>
+
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Cant. Requerida</th>
+                        <th>Cant. Usada</th>
+                        <th>Precio Unit. Estimado</th>
+                        <th>Costo Total Estimado</th>
+                        <th>Notas</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items %}
+                    <tr>
+                        <td>{{ item.material.name if item.material else 'N/A' }}</td>
+                        <td>{{ item.quantity_required }}</td>
+                        <td>{{ item.actual_quantity if item.actual_quantity is not none else 'N/A' }}</td>
+                        <td>{{ item.unit_price | format_currency if item.unit_price is not none else 'N/A' }}</td>
+                        <td>{{ (item.quantity_required * item.unit_price) | format_currency if item.unit_price is not none else 'N/A' }}</td>
+                        <td>{{ item.notes if item.notes else '-' }}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editItemModal{{ item.id }}">Editar</button>
+                            <form action="{{ url_for('pp.delete_production_order_item', item_id=item.id) }}" method="POST" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro de eliminar este ítem?');">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Sección de Procesos -->
+        <div class="tab-pane fade" id="processes" role="tabpanel" aria-labelledby="processes-tab">
+            <h3>Procesos de Producción</h3>
+             <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addProcessModal">Añadir Proceso</button>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Tipo de Proceso</th>
+                        <th>Secuencia</th>
+                        <th>Estado</th>
+                        <th>Tiempo Estimado (hrs)</th>
+                        <th>Horas Reales</th>
+                        <th>Operador</th>
+                         <th>Notas</th>
+                          <th>Habilidades Req.</th>
+                           <th>Parámetros</th>
+                            <th>Verificaciones Calidad</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for process in order.processes | sort(attribute='sequence') %} {# Ordenar por secuencia #}
+                    <tr>
+                        <td>{{ process.process_type }}</td>
+                        <td>{{ process.sequence }}</td>
+                         <td>{{ process.status.capitalize() }}</td>
+                        <td>{{ process.estimated_hours if process.estimated_hours is not none else 'N/A' }}</td>
+                         <td>{{ process.actual_hours if process.actual_hours is not none else 'N/A' }}</td>
+                        <td>{{ process.operator.username if process.operator else 'Sin asignar' }}</td>
+                        <td>{{ process.notes if process.notes else '-' }}</td>
+                         <td><pre>{{ process.required_skills | tojson(indent=2) if process.required_skills else '-' }}</pre></td>
+                          <td><pre>{{ process.parameters | tojson(indent=2) if process.parameters else '-' }}</pre></td>
+                           <td><pre>{{ process.quality_checks | tojson(indent=2) if process.quality_checks else '-' }}</pre></td>
+                        <td>
+                           <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editProcessModal{{ process.id }}">Editar</button>
+                            <form action="{{ url_for('pp.delete_production_process', process_id=process.id) }}" method="POST" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro de eliminar este proceso?');">Eliminar</button>
+                            </form>
+                            {# Botones de acción de Hoja de Ruta Real #}
+                            {% if process.status == 'pending' %}
+                                <form action="{{ url_for('pp.start_production_order_process', process_id=process.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success">Iniciar</button>
+                                </form>
+                            {% elif process.status == 'in_progress' %}
+                                <form action="{{ url_for('pp.complete_production_order_process', process_id=process.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-primary">Completar</button>
+                                </form>
+                                <form action="{{ url_for('pp.cancel_production_order_process', process_id=process.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger">Cancelar</button>
+                                </form>
+                             {% elif process.status == 'completed' %}
+                                <span class="badge bg-success">Completado</span>
+                             {% elif process.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelado</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal para Añadir Ítem -->
+    <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addItemModalLabel">Añadir Nuevo Ítem a Orden #{{ order.order_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addItemForm" action="{{ url_for('pp.add_production_order_item', order_id=order.id) }}" method="POST">
+                        {{ add_item_form.csrf_token }}
+                        <div class="mb-3">
+                            {{ add_item_form.material.label(class="form-label") }}
+                            {{ add_item_form.material(class="form-select") }}
+                            {% if add_item_form.material.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_item_form.material.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ add_item_form.quantity_required.label(class="form-label") }}
+                            {{ add_item_form.quantity_required(class="form-control") }}
+                             {% if add_item_form.quantity_required.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_item_form.quantity_required.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_item_form.actual_quantity.label(class="form-label") }}
+                            {{ add_item_form.actual_quantity(class="form-control") }}
+                             {% if add_item_form.actual_quantity.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_item_form.actual_quantity.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ add_item_form.unit_price.label(class="form-label") }}
+                            {{ add_item_form.unit_price(class="form-control") }}
+                             {% if add_item_form.unit_price.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_item_form.unit_price.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_item_form.notes.label(class="form-label") }}
+                            {{ add_item_form.notes(class="form-control") }}
+                             {% if add_item_form.notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_item_form.notes.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" form="addItemForm" class="btn btn-primary">Guardar Ítem</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modales para Editar Ítems -->
+    {% for item in order.items %}
+    <div class="modal fade" id="editItemModal{{ item.id }}" tabindex="-1" aria-labelledby="editItemModalLabel{{ item.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editItemModalLabel{{ item.id }}">Editar Ítem #{{ item.id }} de Orden #{{ order.order_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editItemForm{{ item.id }}" action="{{ url_for('pp.edit_production_order_item', item_id=item.id) }}" method="POST">
+                         {{ edit_item_forms[item.id].csrf_token }}
+                         {{ edit_item_forms[item.id].id() }} {# Hidden field for item ID #}
+                         <div class="mb-3">
+                            {{ edit_item_forms[item.id].material.label(class="form-label") }}
+                            {{ edit_item_forms[item.id].material(class="form-select") }}
+                            {% if edit_item_forms[item.id].material.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_item_forms[item.id].material.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ edit_item_forms[item.id].quantity_required.label(class="form-label") }}
+                            {{ edit_item_forms[item.id].quantity_required(class="form-control") }}
+                             {% if edit_item_forms[item.id].quantity_required.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_item_forms[item.id].quantity_required.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_item_forms[item.id].actual_quantity.label(class="form-label") }}
+                            {{ edit_item_forms[item.id].actual_quantity(class="form-control") }}
+                             {% if edit_item_forms[item.id].actual_quantity.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_item_forms[item.id].actual_quantity.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ edit_item_forms[item.id].unit_price.label(class="form-label") }}
+                            {{ edit_item_forms[item.id].unit_price(class="form-control") }}
+                             {% if edit_item_forms[item.id].unit_price.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_item_forms[item.id].unit_price.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_item_forms[item.id].notes.label(class="form-label") }}
+                            {{ edit_item_forms[item.id].notes(class="form-control") }}
+                             {% if edit_item_forms[item.id].notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_item_forms[item.id].notes.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" form="editItemForm{{ item.id }}" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+     <!-- Modal para Añadir Proceso -->
+    <div class="modal fade" id="addProcessModal" tabindex="-1" aria-labelledby="addProcessModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addProcessModalLabel">Añadir Nuevo Proceso a Orden #{{ order.order_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addProcessForm" action="{{ url_for('pp.add_production_process', product_id=order.product_id) }}" method="POST"> {# Ojo: add_production_process espera product_id, no order_id #}
+                        {{ add_process_form.csrf_token }}
+                        {# Renderizar campos del formulario de proceso #}
+                         <div class="mb-3">
+                            {{ add_process_form.process_type.label(class="form-label") }}
+                            {{ add_process_form.process_type(class="form-control") }}
+                             {% if add_process_form.process_type.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_process_form.process_type.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_process_form.sequence.label(class="form-label") }}
+                            {{ add_process_form.sequence(class="form-control") }}
+                             {% if add_process_form.sequence.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_process_form.sequence.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_process_form.estimated_time.label(class="form-label") }}
+                            {{ add_process_form.estimated_time(class="form-control") }}
+                             {% if add_process_form.estimated_time.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_process_form.estimated_time.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_process_form.required_skills.label(class="form-label") }}
+                            {{ add_process_form.required_skills(class="form-control") }}
+                             {% if add_process_form.required_skills.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_process_form.required_skills.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_process_form.parameters.label(class="form-label") }}
+                            {{ add_process_form.parameters(class="form-control") }}
+                             {% if add_process_form.parameters.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_process_form.parameters.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ add_process_form.quality_checks.label(class="form-label") }}
+                            {{ add_process_form.quality_checks(class="form-control") }}
+                             {% if add_process_form.quality_checks.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_process_form.quality_checks.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ add_process_form.notes.label(class="form-label") }}
+                            {{ add_process_form.notes(class="form-control") }}
+                             {% if add_process_form.notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in add_process_form.notes.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" form="addProcessForm" class="btn btn-primary">Guardar Proceso</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modales para Editar Procesos -->
+    {% for process in order.processes %}
+    <div class="modal fade" id="editProcessModal{{ process.id }}" tabindex="-1" aria-labelledby="editProcessModalLabel{{ process.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editProcessModalLabel{{ process.id }}">Editar Proceso #{{ process.id }} de Orden #{{ order.order_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editProcessForm{{ process.id }}" action="{{ url_for('pp.edit_production_process', process_id=process.id) }}" method="POST">
+                         {{ edit_process_forms[process.id].csrf_token }}
+                         {{ edit_process_forms[process.id].id() }} {# Hidden field for process ID #}
+                         {# Renderizar campos del formulario de proceso #}
+                          <div class="mb-3">
+                            {{ edit_process_forms[process.id].process_type.label(class="form-label") }}
+                            {{ edit_process_forms[process.id].process_type(class="form-control") }}
+                             {% if edit_process_forms[process.id].process_type.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_process_forms[process.id].process_type.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_process_forms[process.id].sequence.label(class="form-label") }}
+                            {{ edit_process_forms[process.id].sequence(class="form-control") }}
+                             {% if edit_process_forms[process.id].sequence.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_process_forms[process.id].sequence.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_process_forms[process.id].estimated_time.label(class="form-label") }}
+                            {{ edit_process_forms[process.id].estimated_time(class="form-control") }}
+                             {% if edit_process_forms[process.id].estimated_time.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_process_forms[process.id].estimated_time.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_process_forms[process.id].required_skills.label(class="form-label") }}
+                            {{ edit_process_forms[process.id].required_skills(class="form-control") }}
+                             {% if edit_process_forms[process.id].required_skills.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_process_forms[process.id].required_skills.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_process_forms[process.id].parameters.label(class="form-label") }}
+                            {{ edit_process_forms[process.id].parameters(class="form-control") }}
+                             {% if edit_process_forms[process.id].parameters.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_process_forms[process.id].parameters.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ edit_process_forms[process.id].quality_checks.label(class="form-label") }}
+                            {{ edit_process_forms[process.id].quality_checks(class="form-control") }}
+                             {% if edit_process_forms[process.id].quality_checks.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_process_forms[process.id].quality_checks.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                         <div class="mb-3">
+                            {{ edit_process_forms[process.id].notes.label(class="form-label") }}
+                            {{ edit_process_forms[process.id].notes(class="form-control") }}
+                             {% if edit_process_forms[process.id].notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in edit_process_forms[process.id].notes.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" form="editProcessForm{{ process.id }}" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const modalId = urlParams.get('modal');
+        if (modalId) {
+            const modalElement = document.getElementById(modalId);
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+
+                // Opcional: eliminar el parámetro 'modal' de la URL para limpiar
+                urlParams.delete('modal');
+                const newUrl = window.location.origin + window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                history.replaceState({}, document.title, newUrl);
+            }
+        }
+
+        // Activar la pestaña correcta si hay errores de validación en algún modal
+        {% if add_item_form and add_item_form.errors or edit_item_forms and any(form.errors for form in edit_item_forms.values()) %}
+             var itemsTab = new bootstrap.Tab(document.getElementById('items-tab'));
+             itemsTab.show();
+        {% elif add_process_form and add_process_form.errors or edit_process_forms and any(form.errors for form in edit_process_forms.values()) %}
+             var processesTab = new bootstrap.Tab(document.getElementById('processes-tab'));
+             processesTab.show();
+        {% endif %}
+
+    });
+
+    // Función para formatear moneda (simulada, idealmente usaría una librería o filtro Jinja)
+    function formatCurrency(value) {
+        if (value === null || value === undefined) return 'N/A';
+        return '$' + parseFloat(value).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    // Añadir el filtro de moneda a Jinja (esto no funciona directamente en Jinja, es solo un recordatorio/nota)
+    // En Flask, se registraría como un filtro personalizado en app.py o similar.
+
+</script>
+{% endblock %} 

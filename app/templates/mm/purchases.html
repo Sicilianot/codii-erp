@@ -1,0 +1,668 @@
+{% extends "base.html" %}
+
+{% block title %}Órdenes de Compra - ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Órdenes de Compra</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPurchaseModal">
+            <i class="fas fa-plus me-2"></i>
+            Nueva Orden
+        </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('mm.purchases') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Buscar</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.args.get('search', '') }}" 
+                           placeholder="Número, proveedor...">
+                </div>
+                <div class="col-md-3">
+                    <label for="supplier" class="form-label">Proveedor</label>
+                    <select class="form-select" id="supplier" name="supplier">
+                        <option value="">Todos</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}" {% if request.args.get('supplier')|int == supplier.id %}selected{% endif %}>
+                            {{ supplier.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Estado</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Todos</option>
+                        <option value="draft" {% if request.args.get('status') == 'draft' %}selected{% endif %}>
+                            Borrador
+                        </option>
+                        <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>
+                            Pendiente
+                        </option>
+                        <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>
+                            Aprobada
+                        </option>
+                        <option value="received" {% if request.args.get('status') == 'received' %}selected{% endif %}>
+                            Recibida
+                        </option>
+                        <option value="cancelled" {% if request.args.get('status') == 'cancelled' %}selected{% endif %}>
+                            Cancelada
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-2"></i>
+                        Filtrar
+                    </button>
+                    <a href="{{ url_for('mm.purchases') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>
+                        Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de Órdenes de Compra -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Fecha</th>
+                            <th>Proveedor</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Usuario</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for purchase in purchases %}
+                        <tr>
+                            <td>{{ purchase.number }}</td>
+                            <td>{{ purchase.date|format_date }}</td>
+                            <td>{{ purchase.supplier.name }}</td>
+                            <td>{{ purchase.total|format_currency }}</td>
+                            <td>
+                                <span class="badge bg-{{ purchase.status|status_color }}">
+                                    {{ purchase.status|title }}
+                                </span>
+                            </td>
+                            <td>{{ purchase.user.full_name }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    {% if purchase.status == 'draft' %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editPurchaseModal{{ purchase.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#viewPurchaseModal{{ purchase.id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if purchase.status == 'draft' %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deletePurchaseModal{{ purchase.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if purchase.status == 'pending' %}
+                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#receivePurchaseModal{{ purchase.id }}">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if pagination %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% for page in pagination.iter_pages() %}
+                        {% if page %}
+                            <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('mm.purchases', page=page, **request.args) }}">
+                                    {{ page }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Orden de Compra -->
+<div class="modal fade" id="createPurchaseModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nueva Orden de Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.create_purchase') }}" class="needs-validation" novalidate>
+                {{ create_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="supplier" class="form-label">Proveedor</label>
+                            {{ create_form.supplier(class="form-select") }}
+                            {% if create_form.supplier.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.supplier.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="date" class="form-label">Fecha</label>
+                            {{ create_form.date(class="form-control", type="date") }}
+                            {% if create_form.date.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in create_form.date.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas</label>
+                        {{ create_form.notes(class="form-control", rows="2") }}
+                        {% if create_form.notes.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in create_form.notes.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Materiales</h6>
+                            <button type="button" class="btn btn-sm btn-primary" id="addMaterialBtn">
+                                <i class="fas fa-plus me-2"></i>
+                                Agregar Material
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="materialsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Material</th>
+                                            <th>Cantidad</th>
+                                            <th>Precio Unitario</th>
+                                            <th>Subtotal</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Los materiales se agregarán dinámicamente -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                            <td colspan="2">
+                                                <span id="totalAmount">$0.00</span>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Orden</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modales Editar Orden de Compra -->
+{% for purchase in purchases %}
+<div class="modal fade" id="editPurchaseModal{{ purchase.id }}" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Orden de Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.edit_purchase', id=purchase.id) }}" class="needs-validation" novalidate>
+                {{ edit_forms[purchase.id].hidden_tag() }}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="supplier" class="form-label">Proveedor</label>
+                            {{ edit_forms[purchase.id].supplier(class="form-select") }}
+                            {% if edit_forms[purchase.id].supplier.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[purchase.id].supplier.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="date" class="form-label">Fecha</label>
+                            {{ edit_forms[purchase.id].date(class="form-control", type="date") }}
+                            {% if edit_forms[purchase.id].date.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in edit_forms[purchase.id].date.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas</label>
+                        {{ edit_forms[purchase.id].notes(class="form-control", rows="2") }}
+                        {% if edit_forms[purchase.id].notes.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in edit_forms[purchase.id].notes.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Materiales</h6>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="addMaterialRow({{ purchase.id }})">
+                                <i class="fas fa-plus me-2"></i>
+                                Agregar Material
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="materialsTable{{ purchase.id }}">
+                                    <thead>
+                                        <tr>
+                                            <th>Material</th>
+                                            <th>Cantidad</th>
+                                            <th>Precio Unitario</th>
+                                            <th>Subtotal</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in purchase.items %}
+                                        <tr>
+                                            <td>
+                                                <select class="form-select form-select-sm" name="material_id[]" required>
+                                                    {% for material in materials %}
+                                                    <option value="{{ material.id }}" {% if material.id == item.material_id %}selected{% endif %}>
+                                                        {{ material.name }}
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm" 
+                                                       name="quantity[]" value="{{ item.quantity }}" 
+                                                       min="0.01" step="0.01" required>
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm" 
+                                                       name="unit_price[]" value="{{ item.unit_price }}" 
+                                                       min="0.01" step="0.01" required>
+                                            </td>
+                                            <td>
+                                                <span class="subtotal">{{ (item.quantity * item.unit_price)|format_currency }}</span>
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                        onclick="removeMaterialRow(this)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                            <td colspan="2">
+                                                <span class="total-amount">{{ purchase.total|format_currency }}</span>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ver Orden de Compra -->
+<div class="modal fade" id="viewPurchaseModal{{ purchase.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles de la Orden de Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Número</dt>
+                            <dd class="col-sm-8">{{ purchase.number }}</dd>
+
+                            <dt class="col-sm-4">Fecha</dt>
+                            <dd class="col-sm-8">{{ purchase.date|format_date }}</dd>
+
+                            <dt class="col-sm-4">Proveedor</dt>
+                            <dd class="col-sm-8">{{ purchase.supplier.name }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Estado</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-{{ purchase.status|status_color }}">
+                                    {{ purchase.status|title }}
+                                </span>
+                            </dd>
+
+                            <dt class="col-sm-4">Usuario</dt>
+                            <dd class="col-sm-8">{{ purchase.user.full_name }}</dd>
+
+                            <dt class="col-sm-4">Total</dt>
+                            <dd class="col-sm-8">{{ purchase.total|format_currency }}</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                {% if purchase.notes %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Notas</h6>
+                        <p>{{ purchase.notes }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Materiales</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio Unitario</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in purchase.items %}
+                                    <tr>
+                                        <td>{{ item.material.name }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>{{ item.unit_price|format_currency }}</td>
+                                        <td>{{ (item.quantity * item.unit_price)|format_currency }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                        <td>{{ purchase.total|format_currency }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {% if purchase.status == 'received' %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Información de Recepción</h6>
+                        <dl class="row">
+                            <dt class="col-sm-3">Fecha de Recepción</dt>
+                            <dd class="col-sm-9">{{ purchase.received_date|format_datetime }}</dd>
+
+                            <dt class="col-sm-3">Recibido por</dt>
+                            <dd class="col-sm-9">{{ purchase.received_by.full_name }}</dd>
+
+                            {% if purchase.receipt_notes %}
+                            <dt class="col-sm-3">Notas</dt>
+                            <dd class="col-sm-9">{{ purchase.receipt_notes }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                {% if purchase.status == 'draft' %}
+                <button type="button" class="btn btn-primary" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#editPurchaseModal{{ purchase.id }}">
+                    Editar
+                </button>
+                {% endif %}
+                {% if purchase.status == 'pending' %}
+                <button type="button" class="btn btn-success" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#receivePurchaseModal{{ purchase.id }}">
+                    Recibir
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Eliminar Orden de Compra -->
+<div class="modal fade" id="deletePurchaseModal{{ purchase.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar Orden de Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar la orden de compra <strong>{{ purchase.number }}</strong>?</p>
+                <p class="text-danger">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('mm.delete_purchase', id=purchase.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Recibir Orden de Compra -->
+<div class="modal fade" id="receivePurchaseModal{{ purchase.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Recibir Orden de Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('mm.receive_purchase', id=purchase.id) }}" class="needs-validation" novalidate>
+                {{ receive_forms[purchase.id].hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="receipt_notes" class="form-label">Notas de Recepción</label>
+                        {{ receive_forms[purchase.id].receipt_notes(class="form-control", rows="3") }}
+                        {% if receive_forms[purchase.id].receipt_notes.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in receive_forms[purchase.id].receipt_notes.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Confirmar Recepción</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+
+    // Función para agregar fila de material
+    function addMaterialRow(purchaseId = null) {
+        const tableId = purchaseId ? `materialsTable${purchaseId}` : 'materialsTable';
+        const tbody = document.querySelector(`#${tableId} tbody`);
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td>
+                <select class="form-select form-select-sm" name="material_id[]" required>
+                    <option value="">Seleccionar material...</option>
+                    {% for material in materials %}
+                    <option value="{{ material.id }}">{{ material.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm" 
+                       name="quantity[]" value="1" 
+                       min="0.01" step="0.01" required>
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm" 
+                       name="unit_price[]" value="0.00" 
+                       min="0.01" step="0.01" required>
+            </td>
+            <td>
+                <span class="subtotal">$0.00</span>
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" 
+                        onclick="removeMaterialRow(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+        initializeRowEvents(row);
+    }
+
+    // Función para eliminar fila de material
+    window.removeMaterialRow = function(button) {
+        const row = button.closest('tr');
+        row.remove();
+        updateTotal(row.closest('table'));
+    }
+
+    // Función para inicializar eventos de la fila
+    function initializeRowEvents(row) {
+        const quantityInput = row.querySelector('input[name="quantity[]"]');
+        const priceInput = row.querySelector('input[name="unit_price[]"]');
+        const subtotalSpan = row.querySelector('.subtotal');
+
+        function updateSubtotal() {
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            const subtotal = quantity * price;
+            subtotalSpan.textContent = formatCurrency(subtotal);
+            updateTotal(row.closest('table'));
+        }
+
+        quantityInput.addEventListener('input', updateSubtotal);
+        priceInput.addEventListener('input', updateSubtotal);
+    }
+
+    // Función para actualizar el total
+    function updateTotal(table) {
+        const subtotals = Array.from(table.querySelectorAll('.subtotal'))
+            .map(span => parseFloat(span.textContent.replace(/[^0-9.-]+/g, '')) || 0);
+        const total = subtotals.reduce((sum, value) => sum + value, 0);
+        table.querySelector('.total-amount').textContent = formatCurrency(total);
+    }
+
+    // Función para formatear moneda
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN'
+        }).format(amount);
+    }
+
+    // Inicializar eventos para filas existentes
+    document.querySelectorAll('#materialsTable tbody tr').forEach(row => {
+        initializeRowEvents(row);
+    });
+
+    // Evento para el botón de agregar material
+    document.getElementById('addMaterialBtn')?.addEventListener('click', () => {
+        addMaterialRow();
+    });
+});
+</script>
+{% endblock %} 

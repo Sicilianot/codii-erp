@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Orden de Producción{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Nueva Orden de Producción</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('pp.orders') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <form method="POST" class="needs-validation" novalidate>
+        <div class="row">
+            <!-- Información Principal -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Información Principal</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Producto</label>
+                            <select class="form-select" name="product_id" id="productSelect" required>
+                                <option value="">Seleccione un producto</option>
+                                {% for product in products %}
+                                <option value="{{ product.id }}" 
+                                        data-standard-time="{{ product.standard_time }}"
+                                        data-unit="{{ product.unit }}">
+                                    {{ product.name }} ({{ product.code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione un producto.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cantidad</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="quantity" id="quantityInput" 
+                                       min="0.01" step="0.01" required>
+                                <span class="input-group-text" id="unitDisplay">-</span>
+                            </div>
+                            <div class="invalid-feedback">
+                                Por favor ingrese una cantidad válida.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fecha de Inicio</label>
+                            <input type="datetime-local" class="form-control" name="planned_start" 
+                                   id="startDateInput" required>
+                            <div class="invalid-feedback">
+                                Por favor seleccione una fecha de inicio.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fecha de Fin</label>
+                            <input type="datetime-local" class="form-control" name="planned_end" 
+                                   id="endDateInput" required>
+                            <div class="invalid-feedback">
+                                Por favor seleccione una fecha de fin.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración Adicional -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Configuración Adicional</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Prioridad</label>
+                            <select class="form-select" name="priority" required>
+                                <option value="normal">Normal</option>
+                                <option value="high">Alta</option>
+                                <option value="urgent">Urgente</option>
+                                <option value="low">Baja</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione una prioridad.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notas</label>
+                            <textarea class="form-control" name="notes" rows="4"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="auto_calculate" 
+                                       id="autoCalculate" checked>
+                                <label class="form-check-label" for="autoCalculate">
+                                    Calcular fecha de fin automáticamente
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen de Tiempos -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Resumen de Tiempos</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Tiempo Estándar:</strong></p>
+                                <p id="standardTimeDisplay">-</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Tiempo Total Estimado:</strong></p>
+                                <p id="totalTimeDisplay">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12 text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Crear Orden
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% block scripts %}
+<script>
+    // Validación del formulario
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+
+    // Elementos del DOM
+    const productSelect = document.getElementById('productSelect');
+    const quantityInput = document.getElementById('quantityInput');
+    const startDateInput = document.getElementById('startDateInput');
+    const endDateInput = document.getElementById('endDateInput');
+    const unitDisplay = document.getElementById('unitDisplay');
+    const standardTimeDisplay = document.getElementById('standardTimeDisplay');
+    const totalTimeDisplay = document.getElementById('totalTimeDisplay');
+    const autoCalculate = document.getElementById('autoCalculate');
+
+    // Actualizar unidad y tiempo estándar al seleccionar producto
+    productSelect.addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        if (option.value) {
+            unitDisplay.textContent = option.dataset.unit;
+            const standardTime = option.dataset.standardTime;
+            standardTimeDisplay.textContent = standardTime ? `${standardTime} min/unidad` : 'No definido';
+            updateTotalTime();
+        } else {
+            unitDisplay.textContent = '-';
+            standardTimeDisplay.textContent = '-';
+            totalTimeDisplay.textContent = '-';
+        }
+    });
+
+    // Actualizar tiempo total al cambiar cantidad
+    quantityInput.addEventListener('input', updateTotalTime);
+
+    // Actualizar fecha de fin al cambiar fecha de inicio o cantidad
+    startDateInput.addEventListener('change', updateEndDate);
+    quantityInput.addEventListener('input', updateEndDate);
+
+    // Función para actualizar el tiempo total estimado
+    function updateTotalTime() {
+        const option = productSelect.options[productSelect.selectedIndex];
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const standardTime = parseFloat(option.dataset.standardTime) || 0;
+        
+        if (standardTime && quantity) {
+            const totalMinutes = standardTime * quantity;
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = Math.round(totalMinutes % 60);
+            
+            if (hours > 0) {
+                totalTimeDisplay.textContent = `${hours}h ${minutes}min`;
+            } else {
+                totalTimeDisplay.textContent = `${minutes}min`;
+            }
+        } else {
+            totalTimeDisplay.textContent = '-';
+        }
+    }
+
+    // Función para actualizar la fecha de fin
+    function updateEndDate() {
+        if (!autoCalculate.checked) return;
+        
+        const option = productSelect.options[productSelect.selectedIndex];
+        const startDate = new Date(startDateInput.value);
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const standardTime = parseFloat(option.dataset.standardTime) || 0;
+        
+        if (startDate && standardTime && quantity) {
+            const totalMinutes = standardTime * quantity;
+            const endDate = new Date(startDate.getTime() + (totalMinutes * 60000));
+            endDateInput.value = endDate.toISOString().slice(0, 16);
+        }
+    }
+
+    // Establecer fecha de inicio por defecto (ahora)
+    startDateInput.value = new Date().toISOString().slice(0, 16);
+</script>
+{% endblock %}
+{% endblock %} 

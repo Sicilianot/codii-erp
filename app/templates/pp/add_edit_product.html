@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>{{ title }}</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="">
+                        {{ form.csrf_token }}
+
+                        {# Campo oculto para el ID en caso de edición #}
+                        {% if form.id %}{{ form.id() }}{% endif %}
+
+                        <div class="mb-3">
+                            {{ form.code.label(class="form-label") }}
+                            {{ form.code(class="form-control") }}
+                            {% if form.code.errors %}
+                                <div class="text-danger">{% for error in form.code.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control") }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{% for error in form.name.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3">
+                            {{ form.product_type.label(class="form-label") }}
+                            {{ form.product_type(class="form-control") }}
+                            {% if form.product_type.errors %}
+                                <div class="text-danger">{% for error in form.product_type.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3">
+                            {{ form.material_type.label(class="form-label") }}
+                            {{ form.material_type(class="form-control") }}
+                            {% if form.material_type.errors %}
+                                <div class="text-danger">{% for error in form.material_type.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3">
+                            {{ form.unit_of_measure.label(class="form-label") }}
+                            {{ form.unit_of_measure(class="form-control") }}
+                            {% if form.unit_of_measure.errors %}
+                                <div class="text-danger">{% for error in form.unit_of_measure.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3">
+                            {{ form.standard_price.label(class="form-label") }}
+                            {{ form.standard_price(class="form-control", type="number", step="0.01", min="0") }}
+                            {% if form.standard_price.errors %}
+                                <div class="text-danger">{% for error in form.standard_price.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3">
+                            {{ form.estimated_production_time.label(class="form-label") }}
+                            {{ form.estimated_production_time(class="form-control", type="number", step="any", min="0") }}
+                            {% if form.estimated_production_time.errors %}
+                                <div class="text-danger">{% for error in form.estimated_production_time.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3">
+                            {{ form.weight.label(class="form-label") }}
+                            {{ form.weight(class="form-control", type="number", step="any", min="0") }}
+                            {% if form.weight.errors %}
+                                <div class="text-danger">{% for error in form.weight.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3">
+                            {{ form.dimensions.label(class="form-label") }}
+                            {{ form.dimensions(class="form-control") }}
+                            {% if form.dimensions.errors %}
+                                <div class="text-danger">{% for error in form.dimensions.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control", rows="3") }}
+                            {% if form.description.errors %}
+                                <div class="text-danger">{% for error in form.description.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                         <div class="mb-3 form-check">
+                            {{ form.is_active(class="form-check-input") }}
+                            {{ form.is_active.label(class="form-check-label") }}
+                             {% if form.is_active.errors %}
+                                <div class="text-danger">{% for error in form.is_active.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Guardar Producto</button>
+                         <a href="{{ url_for('pp.list_products') }}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de No Conformidades{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <h1 class="h3 mb-2 text-gray-800">No Conformidades</h1>
+    <p class="mb-4">Listado de todas las no conformidades registradas en el sistema.</p>
+
+    <a href="{{ url_for('qm.add_non_conformity') }}" class="btn btn-primary btn-icon-split mb-3">
+        <span class="icon text-white-50">
+            <i class="fas fa-plus"></i>
+        </span>
+        <span class="text">Añadir Nueva No Conformidad</span>
+    </a>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Listado</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th> {# O número si se genera #}
+                            <th>Severidad</th>
+                            <th>Descripción</th>
+                            <th>Estado</th>
+                            <th>Asignado A</th>
+                            <th>Fecha Límite</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tfoot>
+                        <tr>
+                            <th>ID</th> {# O número si se genera #}
+                            <th>Severidad</th>
+                            <th>Descripción</th>
+                            <th>Estado</th>
+                            <th>Asignado A</th>
+                            <th>Fecha Límite</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </tfoot>
+                    <tbody>
+                        {% for nc in non_conformities %}
+                        <tr>
+                            <td>{{ nc.id }}</td>
+                            <td>{{ nc.severity | title }}</td>
+                            <td>{{ nc.description[:100] }}...</td> {# Mostrar un extracto #}
+                            <td>{{ nc.status | title }}</td>
+                            <td>{{ nc.assigned_to.username if nc.assigned_to else 'N/A' }}</td>
+                            <td>{{ nc.due_date.strftime('%Y-%m-%d') if nc.due_date else 'N/A' }}</td>
+                            <td>
+                                <a href="{{ url_for('qm.view_non_conformity', id=nc.id) }}" class="btn btn-info btn-sm">Ver</a>
+                                <a href="{{ url_for('qm.edit_non_conformity', id=nc.id) }}" class="btn btn-warning btn-sm">Editar</a>
+                                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteNCModal{{ nc.id }}">
+                                    Eliminar
+                                </button>
+
+                                <!-- Delete Modal -->
+                                <div class="modal fade" id="deleteNCModal{{ nc.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteNCModalLabel{{ nc.id }}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteNCModalLabel{{ nc.id }}">Confirmar Eliminación</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">¿Estás seguro de que deseas eliminar la No Conformidad ID <strong>{{ nc.id }}</strong>? Esta acción no se puede deshacer.</div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancelar</button>
+                                                <form action="{{ url_for('qm.delete_non_conformity', id=nc.id) }}" method="POST" style="display: inline;">
+                                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Page level plugins -->
+<script src="{{ url_for('static', filename='vendor/datatables/jquery.dataTables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/datatables/dataTables.bootstrap4.min.js') }}"></script>
+
+<!-- Page level custom scripts -->
+<script src="{{ url_for('static', filename='js/demo/datatables-demo.js') }}"></script>
+{% endblock %} 

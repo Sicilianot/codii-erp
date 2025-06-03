@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de Órdenes de Producción{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-3">Órdenes de Producción</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <a href="{{ url_for('pp.create_production_order') }}" class="btn btn-primary mb-3">Crear Nueva Orden de Producción</a>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Número de Orden</th>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Fecha Planificada Inicio</th>
+                <th>Fecha Planificada Fin</th>
+                <th>Estado</th>
+                <th>Prioridad</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in production_orders %}
+            <tr>
+                <td>{{ order.order_number }}</td>
+                <td>{{ order.product.name if order.product else 'Producto Desconocido' }}</td>
+                <td>{{ order.quantity }}</td>
+                <td>{{ order.planned_start.strftime('%Y-%m-%d') if order.planned_start else 'N/A' }}</td>
+                <td>{{ order.planned_end.strftime('%Y-%m-%d') if order.planned_end else 'N/A' }}</td>
+                <td>
+                    {% if order.status == 'completed' %}
+                        <span class="badge bg-success">Completada</span>
+                    {% elif order.status == 'in_progress' %}
+                        <span class="badge bg-primary">En Progreso</span>
+                    {% elif order.status == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelada</span>
+                     {% elif order.status == 'planned' %}
+                        <span class="badge bg-info">Planificada</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ order.status }}</span>
+                    {% endif %}
+                </td>
+                 <td>
+                    {% if order.priority == 'urgent' %}
+                        <span class="badge bg-danger">Urgente</span>
+                    {% elif order.priority == 'high' %}
+                        <span class="badge bg-warning text-dark">Alta</span>
+                    {% elif order.priority == 'normal' %}
+                        <span class="badge bg-success">Normal</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ order.priority }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('pp.view_production_order', id=order.id) }}" class="btn btn-sm btn-info">Ver</a>
+                    <a href="{{ url_for('pp.edit_production_order', id=order.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteOrderModal{{ order.id }}">Eliminar</button>
+
+                    <!-- Modal de Confirmación de Eliminación -->
+                    <div class="modal fade" id="deleteOrderModal{{ order.id }}" tabindex="-1" aria-labelledby="deleteOrderModalLabel{{ order.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="deleteOrderModalLabel{{ order.id }}">Confirmar Eliminación</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    ¿Estás seguro de que quieres eliminar la Orden de Producción número {{ order.order_number }}?
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <form action="{{ url_for('pp.delete_production_order', id=order.id) }}" method="POST" style="display: inline;">
+                                        <button type="submit" class="btn btn-danger">Eliminar</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not production_orders %}
+            <tr>
+                <td colspan="8" class="text-center">No hay órdenes de producción registradas.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 
