@@ -91,6 +91,22 @@ erp-system/
     └── js/
 ```
 
+## Testing
+
+Para ejecutar la suite de pruebas, asegúrate de tener `pytest` instalado (incluido en `requirements.txt`). Desde la raíz del proyecto, ejecuta:
+
+```bash
+python -m pytest
+```
+
+o simplemente:
+
+```bash
+pytest
+```
+
+Las pruebas están ubicadas en el directorio `tests/`. La configuración de las pruebas utiliza una base de datos SQLite en memoria para no interferir con los datos de desarrollo.
+
 ## Contribuir
 
 1. Fork el repositorio
